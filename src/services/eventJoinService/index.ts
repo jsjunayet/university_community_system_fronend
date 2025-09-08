@@ -83,7 +83,6 @@ export const Createeventjoin = async (id: string): Promise<any> => {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
       }
     );
     const result = await res.json();

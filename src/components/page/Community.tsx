@@ -2,13 +2,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  Eye,
+  createComment,
+  createPost,
+  createVote,
+  getAllPost,
+} from "@/services/postService";
+import {
   Heart,
   Image as ImageIcon,
   MessageCircle,
@@ -30,54 +29,56 @@ import {
   Send,
   Share2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
-interface Post {
+interface User {
   id: string;
-  authorId: string;
-  authorName: string;
-  authorAvatar?: string;
-  authorRole: string;
-  content: string;
-  image?: string;
-  timestamp: Date;
-  likes: string[];
-  comments: Comment[];
-  shares: number;
-  type: "post" | "story";
+  email: string;
+  role: string;
+  image: string | null;
+  name: string;
+  bloodGroup: string;
+  studentId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Vote {
+  id: string;
+  userId: string;
+  postId: string;
+  vote: "UP" | "DOWN";
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Comment {
   id: string;
-  authorId: string;
-  authorName: string;
-  authorAvatar?: string;
-  content: string;
-  timestamp: Date;
-  likes: string[];
-  replies: Reply[];
+  userId: string;
+  postId: string;
+  commentText: string;
+  createdAt: string;
+  updatedAt: string;
+  user: User;
 }
 
-interface Reply {
+interface Post {
   id: string;
-  authorId: string;
-  authorName: string;
-  authorAvatar?: string;
-  content: string;
-  timestamp: Date;
-  likes: string[];
-}
-
-interface Story {
-  id: string;
-  authorId: string;
-  authorName: string;
-  authorAvatar?: string;
-  content: string;
-  image?: string;
-  timestamp: Date;
-  views: string[];
-  expiresAt: Date;
+  description: string;
+  location: string;
+  image: string;
+  approved: boolean;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  votes: Vote[];
+  comments: Comment[];
+  user: User;
+  upVotes: number;
+  downVotes: number;
+  totalComments: number;
 }
 
 const Community = () => {
@@ -90,257 +91,306 @@ const Community = () => {
   const [coordinates, setCoordinates] = useState({ lat: 0, lng: 0 });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-  // Mock data
-  const mockPosts: Post[] = [
-    {
-      id: "1",
-      authorId: "1",
-      authorName: "John Doe",
-      authorRole: "Student",
-      content:
-        "Just finished my final project! Excited to graduate next semester. Thanks to all the amazing professors and classmates who helped me along the way! 🎓",
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      likes: ["2", "3"],
-      comments: [
-        {
-          id: "c1",
-          authorId: "2",
-          authorName: "Sarah Wilson",
-          content: "Congratulations! What was your project about?",
-          timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-          likes: ["1"],
-          replies: [
-            {
-              id: "r1",
-              authorId: "1",
-              authorName: "John Doe",
-              content:
-                "It was a web application for university event management!",
-              timestamp: new Date(Date.now() - 30 * 60 * 1000),
-              likes: [],
-            },
-          ],
-        },
-      ],
-      shares: 3,
-      type: "post",
-    },
-    {
-      id: "2",
-      authorId: "2",
-      authorName: "Sarah Wilson",
-      authorRole: "Alumni",
-      content:
-        "Great networking event today! Met so many talented students. The future looks bright! 💼✨",
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      likes: ["1", "3"],
-      comments: [],
-      shares: 1,
-      type: "post",
-    },
-  ];
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPostLoading, setIsPostLoading] = useState(false);
+  const [isCommentLoading, setIsCommentLoading] = useState(false);
+  const [myPosts, setMyPosts] = useState<Post[]>([]);
+  const [isClient, setIsClient] = useState(false);
 
-  const mockStories: Story[] = [
-    {
-      id: "s1",
-      authorId: "1",
-      authorName: "John Doe",
-      content: "Studying at the library",
-      timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      views: ["2", "3"],
-      expiresAt: new Date(Date.now() + 23 * 60 * 60 * 1000),
-    },
-    {
-      id: "s2",
-      authorId: "2",
-      authorName: "Sarah Wilson",
-      content: "Alumni meetup vibes!",
-      timestamp: new Date(Date.now() - 60 * 60 * 1000),
-      views: ["1"],
-      expiresAt: new Date(Date.now() + 22 * 60 * 60 * 1000),
-    },
-  ];
+  // Fix for hydration error - ensure component is only rendered on client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  const [posts, setPosts] = useState<Post[]>(mockPosts);
-  const [stories] = useState<Story[]>(mockStories);
+  const fetchPosts = async () => {
+    try {
+      setIsLoading(true);
+      const response = await getAllPost();
 
-  const handleCreatePost = () => {
+      if (response.success) {
+        // Sort posts by createdAt date (newest first)
+        const sortedPosts = response.data.sort(
+          (a: Post, b: Post) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        // Filter posts based on status if user is not admin
+        const filteredPosts =
+          user?.role === "admin" || user?.role === "superAdmin"
+            ? sortedPosts
+            : sortedPosts.filter((post: Post) => post.status === "approved");
+
+        setPosts(filteredPosts);
+
+        // Set my posts (posts created by the current user)
+        if (user) {
+          const userPosts = sortedPosts.filter(
+            (post: Post) => post.userId === user.id
+          );
+          setMyPosts(userPosts);
+        }
+      } else {
+        toast.error(response.message || "Failed to fetch posts");
+      }
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      toast.error("Failed to fetch posts. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch posts on component mount and when user changes
+  useEffect(() => {
+    if (isClient) {
+      fetchPosts();
+    }
+  }, [user, isClient]);
+
+  const handleCreatePost = async () => {
     if (!newPostContent.trim()) return;
 
-    const newPost: Post = {
-      id: Date.now().toString(),
-      authorId: user?.id || "",
-      authorName: user?.name || "",
-      authorRole: user?.role || "",
-      content: newPostContent,
-      timestamp: new Date(),
-      likes: [],
-      comments: [],
-      shares: 0,
-      type: "post",
-    };
+    try {
+      setIsPostLoading(true);
+      const postData = {
+        description: newPostContent,
+        location: newPostLocation || "University Campus",
+        image:
+          selectedFiles.length > 0
+            ? "https://example.com/uploads/image.jpg"
+            : "", // In a real app, you'd upload the image first
+      };
 
-    setPosts([newPost, ...posts]);
-    setNewPostContent("");
+      const response = await createPost(postData);
+
+      if (response.success) {
+        toast.success("Post created successfully!");
+        setNewPostContent("");
+        setNewPostLocation("");
+        setSelectedFiles([]);
+        setImagePreviewUrls([]);
+        // Refresh posts
+        fetchPosts();
+      } else {
+        toast.error(response.message || "Failed to create post");
+      }
+    } catch (error) {
+      console.error("Error creating post:", error);
+      toast.error("Failed to create post. Please try again.");
+    } finally {
+      setIsPostLoading(false);
+    }
   };
 
-  const handleLikePost = (postId: string) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          const isLiked = post.likes.includes(user?.id || "");
-          return {
-            ...post,
-            likes: isLiked
-              ? post.likes.filter((id) => id !== user?.id)
-              : [...post.likes, user?.id || ""],
-          };
-        }
-        return post;
-      })
-    );
+  const handleLikePost = async (postId: string) => {
+    if (!user) {
+      toast.error("Please login to like posts");
+      return;
+    }
+
+    try {
+      // Find if user already voted on this post
+      const post = posts.find((p) => p.id === postId);
+      if (!post) return;
+
+      const userVote = post.votes.find((v) => v.userId === user.id);
+      const voteType = userVote?.vote === "UP" ? "DOWN" : "UP"; // Toggle vote
+
+      const voteData = {
+        postId,
+        vote: voteType,
+      };
+
+      const response = await createVote(voteData);
+
+      if (response.success) {
+        // Refresh posts to get updated vote counts
+        fetchPosts();
+      } else {
+        toast.error(response.message || "Failed to vote");
+      }
+    } catch (error) {
+      console.error("Error voting on post:", error);
+      toast.error("Failed to vote. Please try again.");
+    }
   };
 
-  const handleAddComment = (postId: string) => {
-    if (!newComment.trim()) return;
+  const handleAddComment = async (postId: string) => {
+    if (!newComment.trim() || !user) {
+      toast.error("Please login to comment");
+      return;
+    }
 
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          const newCommentObj: Comment = {
-            id: Date.now().toString(),
-            authorId: user?.id || "",
-            authorName: user?.name || "",
-            content: newComment,
-            timestamp: new Date(),
-            likes: [],
-            replies: [],
-          };
-          return {
-            ...post,
-            comments: [...post.comments, newCommentObj],
-          };
-        }
-        return post;
-      })
-    );
-    setNewComment("");
+    try {
+      setIsCommentLoading(true);
+      const commentData = {
+        postId,
+        commentText: newComment,
+      };
+
+      const response = await createComment(commentData);
+
+      if (response.success) {
+        toast.success("Comment added successfully!");
+        setNewComment("");
+        // Refresh posts to get updated comments
+        fetchPosts();
+      } else {
+        toast.error(response.message || "Failed to add comment");
+      }
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast.error("Failed to add comment. Please try again.");
+    } finally {
+      setIsCommentLoading(false);
+    }
   };
 
-  const PostCard = ({ post }: { post: Post }) => (
-    <Card className="mb-4">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarImage src={post.authorAvatar} />
-              <AvatarFallback>{post.authorName.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h4 className="font-semibold">{post.authorName}</h4>
-              <p className="text-sm text-muted-foreground">
-                {post.authorRole} • {post.timestamp.toLocaleString()}
-              </p>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm">
-            <MoreHorizontal className="w-4 h-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <p className="mb-4">{post.content}</p>
-        {post.image && (
-          <img
-            src={post.image}
-            alt="Post content"
-            className="w-full rounded-lg mb-4"
-          />
-        )}
+  const PostCard = ({ post }: { post: Post }) => {
+    const [showAllComments, setShowAllComments] = useState(false);
 
-        <div className="flex items-center justify-between border-t pt-3">
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleLikePost(post.id)}
-              className={
-                post.likes.includes(user?.id || "") ? "text-red-500" : ""
-              }
-            >
-              <Heart className="w-4 h-4 mr-1" />
-              {post.likes.length}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedPost(post)}
-            >
-              <MessageCircle className="w-4 h-4 mr-1" />
-              {post.comments.length}
-            </Button>
-            <Button variant="ghost" size="sm">
-              <Share2 className="w-4 h-4 mr-1" />
-              {post.shares}
-            </Button>
-          </div>
-        </div>
+    // Calculate vote counts
+    const upVotes = post.votes.filter((vote) => vote.vote === "UP").length;
+    const downVotes = post.votes.filter((vote) => vote.vote === "DOWN").length;
 
-        {post.comments.length > 0 && (
-          <div className="mt-4 space-y-3">
-            {post.comments.slice(0, 2).map((comment) => (
-              <div key={comment.id} className="flex gap-2">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={comment.authorAvatar} />
-                  <AvatarFallback>
-                    {comment.authorName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 bg-muted rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">
-                      {comment.authorName}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {comment.timestamp.toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="text-sm">{comment.content}</p>
-                </div>
+    // Check if current user has voted
+    const userVote = post.votes.find((vote) => vote.userId === user?.id);
+    const hasUpvoted = userVote?.vote === "UP";
+
+    return (
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarImage src={post.user.image || "/placeholder.jpg"} />
+                <AvatarFallback>{post.user.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <h4 className="font-semibold">{post.user.name}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {post.user.role} • {new Date(post.createdAt).toLocaleString()}
+                </p>
               </div>
-            ))}
-            {post.comments.length > 2 && (
+            </div>
+            <Button variant="ghost" size="sm">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <p className="mb-4">{post.description}</p>
+          {post.image && (
+            <img
+              src={post.image}
+              alt="Post content"
+              className="w-full rounded-lg mb-4"
+            />
+          )}
+          {post.location && (
+            <div className="mb-3 text-sm text-muted-foreground">
+              📍 {post.location}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-t pt-3">
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleLikePost(post.id)}
+                className={hasUpvoted ? "text-red-500" : ""}
+              >
+                <Heart className="w-4 h-4 mr-1" />
+                {upVotes}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedPost(post)}
               >
-                View all {post.comments.length} comments
+                <MessageCircle className="w-4 h-4 mr-1" />
+                {post.comments.length}
               </Button>
-            )}
+              <Button variant="ghost" size="sm">
+                <Share2 className="w-4 h-4 mr-1" />
+                Share
+              </Button>
+              {post.status && post.status !== "approved" && (
+                <Badge variant="outline" className="ml-2">
+                  {post.status}
+                </Badge>
+              )}
+            </div>
           </div>
-        )}
 
-        <div className="flex gap-2 mt-3">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={user?.avatar} />
-            <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 flex gap-2">
-            <Input
-              placeholder="Write a comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleAddComment(post.id)}
-            />
-            <Button size="sm" onClick={() => handleAddComment(post.id)}>
-              <Send className="w-4 h-4" />
-            </Button>
+          {post.comments.length > 0 && (
+            <div className="mt-4 space-y-3">
+              {post.comments
+                .slice(0, showAllComments ? undefined : 2)
+                .map((comment) => (
+                  <div key={comment.id} className="flex gap-2">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage
+                        src={comment.user.image || "/placeholder.jpg"}
+                      />
+                      <AvatarFallback>
+                        {comment.user.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 bg-muted rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm">
+                          {comment.user.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(comment.createdAt).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="text-sm">{comment.commentText}</p>
+                    </div>
+                  </div>
+                ))}
+              {post.comments.length > 2 && !showAllComments && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllComments(true)}
+                >
+                  View all {post.comments.length} comments
+                </Button>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-3">
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={user?.image} />
+              <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 flex gap-2">
+              <Input
+                placeholder="Write a comment..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyPress={(e) =>
+                  e.key === "Enter" && handleAddComment(post.id)
+                }
+              />
+              <Button
+                size="sm"
+                onClick={() => handleAddComment(post.id)}
+                disabled={isCommentLoading}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -378,6 +428,11 @@ const Community = () => {
       setLocationDialogOpen(true);
     }
   };
+  // Wrap the entire component render with isClient check
+  if (!isClient) {
+    return null; // Return null on server-side to prevent hydration mismatch
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -434,7 +489,7 @@ const Community = () => {
             <CardContent className="p-4">
               <div className="flex gap-3">
                 <Avatar>
-                  <AvatarImage src={user?.avatar} />
+                  <AvatarImage src={user?.image || "/placeholder.jpg"} />
                   <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-3">
@@ -446,7 +501,26 @@ const Community = () => {
                   />
                   <div className="flex justify-between items-center">
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const input = document.createElement("input");
+                          input.type = "file";
+                          input.accept = "image/*";
+                          input.onchange = (e) => {
+                            const files = Array.from(e.target.files || []);
+                            setSelectedFiles(files);
+
+                            // Create preview URLs
+                            const previews = files.map((file) =>
+                              URL.createObjectURL(file)
+                            );
+                            setImagePreviewUrls(previews);
+                          };
+                          input.click();
+                        }}
+                      >
                         <ImageIcon className="w-4 h-4 mr-1" />
                         Photo
                       </Button>
@@ -467,11 +541,48 @@ const Community = () => {
                     </div>
                     <Button
                       onClick={handleCreatePost}
-                      disabled={!newPostContent.trim()}
+                      disabled={!newPostContent.trim() || isPostLoading}
                     >
-                      Post
+                      {isPostLoading ? "Posting..." : "Post"}
                     </Button>
                   </div>
+
+                  {imagePreviewUrls.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {imagePreviewUrls.map((url, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={url}
+                            alt={`Preview ${index}`}
+                            className="h-20 w-20 object-cover rounded-md"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                            onClick={() => {
+                              const newFiles = [...selectedFiles];
+                              newFiles.splice(index, 1);
+                              setSelectedFiles(newFiles);
+
+                              const newUrls = [...imagePreviewUrls];
+                              URL.revokeObjectURL(newUrls[index]);
+                              newUrls.splice(index, 1);
+                              setImagePreviewUrls(newUrls);
+                            }}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {newPostLocation && (
+                    <div className="mt-2 text-sm text-muted-foreground flex items-center gap-1">
+                      <span>📍</span> {newPostLocation}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -485,7 +596,7 @@ const Community = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="stories" className="space-y-4">
+        {/* <TabsContent value="stories" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {stories.map((story) => (
               <Card
@@ -586,7 +697,7 @@ const Community = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
 
       {/* Post Detail Modal */}
