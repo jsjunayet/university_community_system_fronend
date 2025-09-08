@@ -12,6 +12,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -23,7 +25,6 @@ import {
   Eye,
   Heart,
   Image as ImageIcon,
-  LocationEdit,
   MessageCircle,
   MoreHorizontal,
   Send,
@@ -84,7 +85,11 @@ const Community = () => {
   const [newPostContent, setNewPostContent] = useState("");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [newComment, setNewComment] = useState("");
-
+  const [newPostLocation, setNewPostLocation] = useState("");
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  const [coordinates, setCoordinates] = useState({ lat: 0, lng: 0 });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   // Mock data
   const mockPosts: Post[] = [
     {
@@ -336,7 +341,43 @@ const Community = () => {
       </CardContent>
     </Card>
   );
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setCoordinates({ lat: latitude, lng: longitude });
 
+          fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          )
+            .then((res) => res.json())
+            .then((data) => {
+              const locationName =
+                data.address.city ||
+                data.address.town ||
+                data.address.suburb ||
+                "Current location";
+              setNewPostLocation(locationName);
+              toast.success(`Location detected: ${locationName}`);
+            })
+            .catch(() => {
+              setNewPostLocation(
+                `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`
+              );
+              toast.success("Coordinates detected");
+            });
+        },
+        () => {
+          toast.error("Couldn't access your location");
+          setLocationDialogOpen(true);
+        }
+      );
+    } else {
+      toast.error("Geolocation is not supported");
+      setLocationDialogOpen(true);
+    }
+  };
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -409,9 +450,19 @@ const Community = () => {
                         <ImageIcon className="w-4 h-4 mr-1" />
                         Photo
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        <LocationEdit className="w-4 h-4 mr-1" />
-                        Location
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={getCurrentLocation}
+                      >
+                        📍 Use Current Location
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLocationDialogOpen(true)}
+                      >
+                        ✍️ Enter Manually
                       </Button>
                     </div>
                     <Button
@@ -619,6 +670,24 @@ const Community = () => {
           </DialogContent>
         </Dialog>
       )}
+      <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enter Your Location</DialogTitle>
+            <DialogDescription>
+              Couldn&apos;t detect location. Please enter manually.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={newPostLocation}
+            onChange={(e) => setNewPostLocation(e.target.value)}
+            placeholder="e.g. New Market, Dhaka"
+          />
+          <DialogFooter>
+            <Button onClick={() => setLocationDialogOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
