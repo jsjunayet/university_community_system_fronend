@@ -21,13 +21,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { JobApplication } from "@/types";
-import { Building, Calendar, MapPin, Plus, Search, Users } from "lucide-react";
+import {
+  Building,
+  Calendar,
+  Check,
+  Eye,
+  MapPin,
+  Plus,
+  Search,
+  Users,
+  X,
+} from "lucide-react";
 import { useState } from "react";
+import { JobApplicationModal } from "../JobApplication/JobApplicationModal";
 
 const Jobs = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
+  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+  const [selectedJobForApplication, setSelectedJobForApplication] =
+    useState<JobApplication | null>(null);
 
   // Mock job applications
   const mockJobs: JobApplication[] = [
@@ -71,18 +85,96 @@ const Jobs = () => {
     },
   ];
 
-  const [jobs] = useState<JobApplication[]>(mockJobs);
+  const [jobs, setJobs] = useState<JobApplication[]>(mockJobs);
   const [applications, setApplications] = useState<any[]>([]);
+  const [jobData, setJobData] = useState({
+    title: "",
+    company: "",
+    description: "",
+    requirements: "",
+    deadline: "",
+  });
 
-  const handleApply = (jobId: string) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { id, value } = e.target;
+    setJobData({ ...jobData, [id]: value });
+  };
+
+  const handleSubmit = () => {
+    // Format deadline to ISO string
+    const formattedDeadline = jobData.deadline
+      ? new Date(jobData.deadline).toISOString()
+      : null;
+
+    const payload = {
+      ...jobData,
+      deadline: formattedDeadline,
+      authorId: "USER_ID_1", // Replace dynamically with logged-in user ID
+    };
+
+    console.log("Final Payload:", payload);
+
+    // TODO: Send to backend with fetch/axios
+    // await fetch("/api/jobs", { method: "POST", body: JSON.stringify(payload) });
+  };
+  const handleApply = (job: JobApplication) => {
+    setSelectedJobForApplication(job);
+    setIsApplicationModalOpen(true);
+  };
+
+  const handleApplicationSubmit = (applicationData: any) => {
     const newApplication = {
       id: Date.now().toString(),
-      jobId,
-      applicantId: user?.id,
-      appliedDate: new Date(),
-      status: "pending",
+      ...applicationData,
+      userId: user?.id,
+      status: "PENDING",
+      createdAt: new Date(),
     };
+
+    // Update the job with the new application
+    setJobs((jobs) =>
+      jobs.map((job) =>
+        job.id === applicationData.jobPostId
+          ? { ...job, applications: [...job.applications, newApplication] }
+          : job
+      )
+    );
+
     setApplications([...applications, newApplication]);
+  };
+
+  const handleApproveApplication = (jobId: string, applicationId: string) => {
+    setJobs((jobs) =>
+      jobs.map((job) =>
+        job.id === jobId
+          ? {
+              ...job,
+              applications: job.applications.map((app) =>
+                app.id === applicationId
+                  ? { ...app, status: "shortlisted" }
+                  : app
+              ),
+            }
+          : job
+      )
+    );
+  };
+
+  const handleRejectApplication = (jobId: string, applicationId: string) => {
+    setJobs((jobs) =>
+      jobs.map((job) =>
+        job.id === jobId
+          ? {
+              ...job,
+              applications: job.applications.map((app) =>
+                app.id === applicationId ? { ...app, status: "rejected" } : app
+              ),
+            }
+          : job
+      )
+    );
   };
 
   const filteredJobs = jobs.filter(
@@ -92,7 +184,10 @@ const Jobs = () => {
   );
 
   const userApplications = applications.filter(
-    (app) => app.applicantId === user?.id
+    (app) => app.userId === user?.id
+  );
+  const myPostedJobs = jobs.filter(
+    (job) => job.postedBy === user?.name || job.postedBy === user?.id
   );
 
   return (
@@ -117,15 +212,30 @@ const Jobs = () => {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="title">Job Title</Label>
-                  <Input id="title" placeholder="Software Engineer" />
+                  <Input
+                    id="title"
+                    placeholder="Software Engineer"
+                    value={jobData.title}
+                    onChange={handleChange}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="company">Company</Label>
-                  <Input id="company" placeholder="Company Name" />
+                  <Input
+                    id="company"
+                    placeholder="Company Name"
+                    value={jobData.company}
+                    onChange={handleChange}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" placeholder="Job description..." />
+                  <Textarea
+                    id="description"
+                    placeholder="Job description..."
+                    value={jobData.description}
+                    onChange={handleChange}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="requirements">
@@ -134,9 +244,22 @@ const Jobs = () => {
                   <Input
                     id="requirements"
                     placeholder="React, TypeScript, Node.js"
+                    value={jobData.requirements}
+                    onChange={handleChange}
                   />
                 </div>
-                <Button className="w-full">Post Job</Button>
+                <div>
+                  <Label htmlFor="deadline">Deadline</Label>
+                  <Input
+                    id="deadline"
+                    type="date"
+                    value={jobData.deadline}
+                    onChange={handleChange}
+                  />
+                </div>
+                <Button className="w-full" onClick={handleSubmit}>
+                  Post Job
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -144,9 +267,10 @@ const Jobs = () => {
       </div>
 
       <Tabs defaultValue="browse" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="browse">Browse Jobs</TabsTrigger>
           <TabsTrigger value="applications">My Applications</TabsTrigger>
+          <TabsTrigger value="manage">Manage Jobs</TabsTrigger>
           <TabsTrigger value="tracking">Application Tracking</TabsTrigger>
         </TabsList>
 
@@ -210,9 +334,7 @@ const Jobs = () => {
                     <span className="text-sm text-muted-foreground">
                       Deadline: {job.applicationDeadline.toLocaleDateString()}
                     </span>
-                    <Button onClick={() => handleApply(job.id)}>
-                      Apply Now
-                    </Button>
+                    <Button onClick={() => handleApply(job)}>Apply Now</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -259,6 +381,135 @@ const Jobs = () => {
               </Card>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="manage" className="space-y-4">
+          {user?.role === "alumni" || user?.role === "admin" ? (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold">Manage Posted Jobs</h2>
+
+              {myPostedJobs.length > 0 ? (
+                <div className="grid gap-4">
+                  {myPostedJobs.map((job) => (
+                    <Card key={job.id}>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle>{job.title}</CardTitle>
+                            <CardDescription>{job.company}</CardDescription>
+                          </div>
+                          <Badge
+                            variant={
+                              job.status === "open" ? "default" : "secondary"
+                            }
+                          >
+                            {job.status}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">
+                              {job.applications.length} applications received
+                            </span>
+                            <Button variant="outline" size="sm">
+                              Edit Job
+                            </Button>
+                          </div>
+
+                          {job.applications.length > 0 && (
+                            <div className="space-y-3">
+                              <h4 className="font-medium">Applications:</h4>
+                              {job.applications.map((app) => (
+                                <div
+                                  key={app.id}
+                                  className="flex items-center justify-between p-3 border rounded-lg"
+                                >
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">
+                                      {app.applicantId}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Applied:{" "}
+                                      {app.appliedDate.toLocaleDateString()}
+                                    </p>
+                                    <Badge
+                                      variant={
+                                        app.status === "pending"
+                                          ? "secondary"
+                                          : app.status === "shortlisted"
+                                          ? "default"
+                                          : app.status === "rejected"
+                                          ? "destructive"
+                                          : "success"
+                                      }
+                                      className="text-xs mt-1"
+                                    >
+                                      {app.status}
+                                    </Badge>
+                                  </div>
+
+                                  <div className="flex gap-2">
+                                    <Button variant="outline" size="sm">
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+
+                                    {app.status === "pending" && (
+                                      <>
+                                        <Button
+                                          variant="success"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleApproveApplication(
+                                              job.id,
+                                              app.id
+                                            )
+                                          }
+                                        >
+                                          <Check className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleRejectApplication(
+                                              job.id,
+                                              app.id
+                                            )
+                                          }
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <p className="text-muted-foreground">No jobs posted yet</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Only alumni and admin users can manage job postings
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="tracking" className="space-y-4">
@@ -323,6 +574,14 @@ const Jobs = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <JobApplicationModal
+        isOpen={isApplicationModalOpen}
+        onClose={() => setIsApplicationModalOpen(false)}
+        jobTitle={selectedJobForApplication?.title || ""}
+        jobId={selectedJobForApplication?.id || ""}
+        onSubmit={handleApplicationSubmit}
+      />
     </div>
   );
 };

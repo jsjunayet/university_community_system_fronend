@@ -1,8 +1,19 @@
 "use client";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -10,19 +21,113 @@ import {
   Camera,
   CheckCircle,
   Clock,
+  DollarSign,
   Info,
   MapPin,
+  Plus,
   Route,
   User,
   Users,
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
+import { TourManagementCard } from "../TourManageMentCart/TourManagementCard";
 
 const Tours = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("available");
+
+  // Group tours state with proper types
+  interface TourJoin {
+    id: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    bkashNumber: string;
+    trxId: string;
+    amount: number;
+    verified: boolean;
+    status: "PENDING" | "ACCEPTED" | "REJECTED";
+    createdAt: Date;
+  }
+
+  interface GroupTour {
+    id: string;
+    title: string;
+    description: string;
+    difficulty: string;
+    duration: string;
+    route: string;
+    highlights: string;
+    deadline: Date;
+    bkashNumber: string;
+    price: string;
+    status: "pending" | "approved";
+    authorId: string;
+    tourJoins: TourJoin[];
+  }
+
+  const [groupTours, setGroupTours] = useState<GroupTour[]>([
+    {
+      id: "1",
+      title: "Cox's Bazar Beach Adventure",
+      description:
+        "Explore the world's longest natural sea beach with fellow university students",
+      difficulty: "Easy",
+      duration: "3 days 2 nights",
+      route: "Dhaka → Cox's Bazar → Inani Beach → Himchari",
+      highlights:
+        "Beach activities, local seafood, sunset views, cultural sites",
+      deadline: new Date("2024-03-15"),
+      bkashNumber: "01712345678",
+      price: "8500",
+      status: "approved",
+      authorId: "2",
+      tourJoins: [
+        {
+          id: "tj1",
+          userId: "1",
+          userName: "John Doe",
+          userEmail: "john@university.edu",
+          bkashNumber: "01987654321",
+          trxId: "TXN123456789",
+          amount: 8500,
+          verified: true,
+          status: "PENDING",
+          createdAt: new Date(),
+        },
+      ],
+    },
+    {
+      id: "2",
+      title: "Sylhet Tea Garden Tour",
+      description:
+        "Experience the beauty of tea gardens and natural landscapes",
+      difficulty: "Moderate",
+      duration: "2 days 1 night",
+      route: "Dhaka → Sylhet → Srimangal → Tea Gardens",
+      highlights: "Tea tasting, nature walks, local culture, photography",
+      deadline: new Date("2024-03-20"),
+      bkashNumber: "01812345678",
+      price: "6500",
+      status: "approved",
+      authorId: user?.id || "1",
+      tourJoins: [],
+    },
+  ]);
+
+  const [newTourData, setNewTourData] = useState({
+    title: "",
+    description: "",
+    difficulty: "Easy",
+    duration: "",
+    route: "",
+    highlights: "",
+    deadline: "",
+    bkashNumber: "",
+    price: "",
+  });
 
   // Mock tours data
   const availableTours = [
@@ -156,17 +261,142 @@ const Tours = () => {
     });
   };
 
+  // Group tour functions
+  const handleCreateTour = () => {
+    if (!newTourData.title || !newTourData.description || !newTourData.price) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newTour: GroupTour = {
+      id: Date.now().toString(),
+      ...newTourData,
+      deadline: new Date(newTourData.deadline),
+      status: "pending",
+      authorId: user?.id || "",
+      tourJoins: [],
+    };
+
+    setGroupTours([...groupTours, newTour]);
+    setNewTourData({
+      title: "",
+      description: "",
+      difficulty: "Easy",
+      duration: "",
+      route: "",
+      highlights: "",
+      deadline: "",
+      bkashNumber: "",
+      price: "",
+    });
+
+    toast({
+      title: "Tour Created",
+      description: "Your group tour has been created and is pending approval",
+    });
+  };
+
+  const handleTourJoin = (tourId: string, joinData: any) => {
+    const newJoin: TourJoin = {
+      id: Date.now().toString(),
+      userId: user?.id || "",
+      userName: user?.name || "",
+      userEmail: user?.email || "",
+      ...joinData,
+      verified: false,
+      status: "PENDING",
+      createdAt: new Date(),
+    };
+
+    setGroupTours((tours) =>
+      tours.map((tour) =>
+        tour.id === tourId
+          ? { ...tour, tourJoins: [...tour.tourJoins, newJoin] }
+          : tour
+      )
+    );
+  };
+
+  const handleApproveJoin = (joinId: string) => {
+    setGroupTours((tours) =>
+      tours.map((tour) => ({
+        ...tour,
+        tourJoins: tour.tourJoins.map((join) =>
+          join.id === joinId ? { ...join, status: "ACCEPTED" } : join
+        ),
+      }))
+    );
+
+    toast({
+      title: "Participant Approved",
+      description: "The participant has been approved for the tour",
+    });
+  };
+
+  const handleRejectJoin = (joinId: string) => {
+    setGroupTours((tours) =>
+      tours.map((tour) => ({
+        ...tour,
+        tourJoins: tour.tourJoins.map((join) =>
+          join.id === joinId ? { ...join, status: "REJECTED" } : join
+        ),
+      }))
+    );
+
+    toast({
+      title: "Participant Rejected",
+      description: "The participant has been rejected from the tour",
+      variant: "destructive",
+    });
+  };
+  const [joinFormData, setJoinFormData] = useState({
+    bkashNumber: "",
+    trxId: "",
+  });
+  const [selectedTour, setSelectedTour] = useState<any>(null);
+
+  const handleJoinSubmit = () => {
+    if (!selectedTour) return;
+
+    const payload = {
+      tourId: selectedTour.id,
+      bkashNumber: joinFormData.bkashNumber,
+      trxId: joinFormData.trxId,
+    };
+
+    console.log("Join Request:", payload);
+
+    // TODO: Send to backend API
+    // await fetch("/api/join-tour", { method: "POST", body: JSON.stringify(payload) });
+
+    // Reset after submit
+    setJoinFormData({ bkashNumber: "", trxId: "" });
+    setSelectedTour(null);
+  };
+  const myCreatedTours = groupTours.filter(
+    (tour) => tour.authorId === user?.id
+  );
+  const myJoinedTours = groupTours.filter((tour) =>
+    tour.tourJoins.some((join) => join.userId === user?.id)
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-accent text-white p-6 rounded-lg">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-            <MapPin className="w-6 h-6" />
+      <div className="bg-gradient-accent text-white p-responsive sm:p-6 rounded-lg">
+        <div className="flex items-center gap-2 sm:gap-4 flex-responsive-col sm:flex-row text-center sm:text-left">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-lg flex items-center justify-center">
+            <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Group Tours</h1>
-            <p className="text-white/80">
+            <h1 className="text-responsive-xl sm:text-xl lg:text-2xl font-bold">
+              Group Tours
+            </h1>
+            <p className="text-white/80 text-responsive sm:text-base">
               Explore campus and city with guided tours and fellow community
               members
             </p>
@@ -175,10 +405,22 @@ const Tours = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="available">Available Tours</TabsTrigger>
-          <TabsTrigger value="my-tours">My Tours</TabsTrigger>
-          <TabsTrigger value="guides">Tour Guides</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 gap-1">
+          <TabsTrigger value="available" className="text-responsive sm:text-sm">
+            Available
+          </TabsTrigger>
+          <TabsTrigger
+            value="group-tours"
+            className="text-responsive sm:text-sm"
+          >
+            Group Tours
+          </TabsTrigger>
+          <TabsTrigger value="my-tours" className="text-responsive sm:text-sm">
+            My Tours
+          </TabsTrigger>
+          {/* <TabsTrigger value="guides" className="text-responsive sm:text-sm">
+            Guides
+          </TabsTrigger> */}
         </TabsList>
 
         {/* Available Tours Tab */}
@@ -308,7 +550,7 @@ const Tours = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Button
+                        {/* <Button
                           variant="hero"
                           size="sm"
                           onClick={() => handleJoinTour(tour.id)}
@@ -320,11 +562,86 @@ const Tours = () => {
                           {tour.currentParticipants >= tour.maxParticipants
                             ? "Full"
                             : "Join Tour"}
-                        </Button>
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Info className="w-4 h-4 mr-2" />
-                          More Info
-                        </Button>
+                        </Button> */}
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="hero"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => setSelectedTour(tour)}
+                              disabled={
+                                tour.currentParticipants >= tour.maxParticipants
+                              }
+                            >
+                              {tour.currentParticipants >= tour.maxParticipants
+                                ? "Full"
+                                : "Join Tour"}
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>
+                                Join {selectedTour?.title || "Tour"}
+                              </DialogTitle>
+                            </DialogHeader>
+
+                            {selectedTour && (
+                              <div className="space-y-4">
+                                <div className="bg-muted p-4 rounded-lg">
+                                  <p className="text-sm font-medium mb-2">
+                                    Payment Details:
+                                  </p>
+                                  <p className="text-sm">
+                                    Amount: ৳{selectedTour.price}
+                                  </p>
+                                  <p className="text-sm">
+                                    bKash: {selectedTour.bkashNumber}
+                                  </p>
+                                </div>
+
+                                <div>
+                                  <label className="text-sm font-medium">
+                                    Your bKash Number
+                                  </label>
+                                  <Input
+                                    value={joinFormData.bkashNumber}
+                                    onChange={(e) =>
+                                      setJoinFormData((prev) => ({
+                                        ...prev,
+                                        bkashNumber: e.target.value,
+                                      }))
+                                    }
+                                    placeholder="01XXXXXXXXX"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="text-sm font-medium">
+                                    Transaction ID
+                                  </label>
+                                  <Input
+                                    value={joinFormData.trxId}
+                                    onChange={(e) =>
+                                      setJoinFormData((prev) => ({
+                                        ...prev,
+                                        trxId: e.target.value,
+                                      }))
+                                    }
+                                    placeholder="Transaction ID from bKash"
+                                  />
+                                </div>
+
+                                <Button
+                                  onClick={handleJoinSubmit}
+                                  className="w-full"
+                                >
+                                  Submit Join Request
+                                </Button>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </div>
                   </div>
@@ -332,6 +649,232 @@ const Tours = () => {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        {/* Group Tours Tab */}
+        <TabsContent value="group-tours" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Group Tours</h2>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create Group Tour
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Create New Group Tour</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+                  <div>
+                    <Label htmlFor="title">Tour Title *</Label>
+                    <Input
+                      id="title"
+                      value={newTourData.title}
+                      onChange={(e) =>
+                        setNewTourData((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
+                      }
+                      placeholder="Cox's Bazar Beach Adventure"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="description">Description *</Label>
+                    <Textarea
+                      id="description"
+                      value={newTourData.description}
+                      onChange={(e) =>
+                        setNewTourData((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      placeholder="Describe your tour..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="difficulty">Difficulty</Label>
+                      <select
+                        id="difficulty"
+                        value={newTourData.difficulty}
+                        onChange={(e) =>
+                          setNewTourData((prev) => ({
+                            ...prev,
+                            difficulty: e.target.value,
+                          }))
+                        }
+                        className="w-full p-2 border border-input rounded-md"
+                      >
+                        <option value="Easy">Easy</option>
+                        <option value="Moderate">Moderate</option>
+                        <option value="Hard">Hard</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="duration">Duration *</Label>
+                      <Input
+                        id="duration"
+                        value={newTourData.duration}
+                        onChange={(e) =>
+                          setNewTourData((prev) => ({
+                            ...prev,
+                            duration: e.target.value,
+                          }))
+                        }
+                        placeholder="3 days 2 nights"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="route">Route *</Label>
+                    <Input
+                      id="route"
+                      value={newTourData.route}
+                      onChange={(e) =>
+                        setNewTourData((prev) => ({
+                          ...prev,
+                          route: e.target.value,
+                        }))
+                      }
+                      placeholder="Dhaka → Cox's Bazar → Inani Beach"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="highlights">Highlights *</Label>
+                    <Textarea
+                      id="highlights"
+                      value={newTourData.highlights}
+                      onChange={(e) =>
+                        setNewTourData((prev) => ({
+                          ...prev,
+                          highlights: e.target.value,
+                        }))
+                      }
+                      placeholder="Beach activities, local seafood, sunset views"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="deadline">Registration Deadline *</Label>
+                      <Input
+                        id="deadline"
+                        type="date"
+                        value={newTourData.deadline}
+                        onChange={(e) =>
+                          setNewTourData((prev) => ({
+                            ...prev,
+                            deadline: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="price">Price (BDT) *</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        value={newTourData.price}
+                        onChange={(e) =>
+                          setNewTourData((prev) => ({
+                            ...prev,
+                            price: e.target.value,
+                          }))
+                        }
+                        placeholder="8500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="bkashNumber">bKash Number *</Label>
+                    <Input
+                      id="bkashNumber"
+                      value={newTourData.bkashNumber}
+                      onChange={(e) =>
+                        setNewTourData((prev) => ({
+                          ...prev,
+                          bkashNumber: e.target.value,
+                        }))
+                      }
+                      placeholder="01XXXXXXXXX"
+                    />
+                  </div>
+
+                  <Button onClick={handleCreateTour} className="w-full">
+                    Create Tour
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="grid gap-6">
+            {groupTours.map((tour) => (
+              <TourManagementCard
+                key={tour.id}
+                tour={tour}
+                isAuthor={tour.authorId === user?.id}
+                onApprove={handleApproveJoin}
+                onReject={handleRejectJoin}
+                onJoin={handleTourJoin}
+              />
+            ))}
+          </div>
+
+          {/* My Created Tours */}
+          {myCreatedTours.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">My Created Tours</h3>
+              <div className="grid gap-4">
+                {myCreatedTours.map((tour) => (
+                  <Card key={tour.id} className="bg-muted/50">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg">
+                            {tour.title}
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {tour.description}
+                          </p>
+                          <div className="flex gap-2 mt-2">
+                            <Badge
+                              variant={
+                                tour.status === "approved"
+                                  ? "success"
+                                  : "secondary"
+                              }
+                            >
+                              {tour.status}
+                            </Badge>
+                            <Badge variant="outline">
+                              {tour.tourJoins.length} participants
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <DollarSign className="w-4 h-4" />৳{tour.price}
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* My Tours Tab */}

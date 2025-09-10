@@ -38,12 +38,10 @@ import { ApprovedEvent, getEventForAdmin } from "@/services/eventService";
 import { BloodDonation, Event, User } from "@/types";
 import {
   AlertTriangle,
-  BarChart3,
   Calendar,
   CheckCircle,
   Heart,
   Search,
-  Settings,
   Trash2,
   Users,
   XCircle,
@@ -92,7 +90,7 @@ const Admin = () => {
       verified: true,
     },
   ];
-  
+
   const formatbloodGroup = (type: string) => {
     const map: Record<string, string> = {
       A_POS: "A+",
@@ -135,7 +133,7 @@ const Admin = () => {
       emergencyRequest: false,
     },
   ];
-  
+
   // State to control dialog open/close
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -176,13 +174,13 @@ const Admin = () => {
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [events] = useState<Event[]>(mockEvents);
   const [bloodDonations] = useState<BloodDonation[]>(mockBloodDonations);
-  
+
   // Fetch users and events when component mounts
   useEffect(() => {
     fetchUsers();
     fetchEvents();
   }, []);
-  
+
   const handleDeleteUser = async (id: string) => {
     try {
       const res = await DeletedUser(id);
@@ -196,7 +194,7 @@ const Admin = () => {
       toast.error(err.message || "Failed to delete user");
     }
   };
-  
+
   const fetchUsers = async () => {
     const res = await getAlluser();
     console.log(res);
@@ -204,7 +202,7 @@ const Admin = () => {
       setUsers(res.data);
     }
   };
-  
+
   // Fetch events for admin
   const fetchEvents = async () => {
     try {
@@ -224,10 +222,10 @@ const Admin = () => {
   };
 
   // Handle event approval
-  const handleApproveEvent = async (eventId: string) => {
+  const handleApproveEvent = async (eventId: string, status: string) => {
     try {
       setIsActionLoading(true);
-      const response = await ApprovedEvent(eventId);
+      const response = await ApprovedEvent(eventId, status);
       if (response.success) {
         toast.success("Event approved successfully");
         fetchEvents(); // Refresh events list
@@ -242,22 +240,6 @@ const Admin = () => {
     }
   };
 
-  // Handle event rejection
-  const handleRejectEvent = async (eventId: string) => {
-    try {
-      setIsActionLoading(true);
-      // Note: There's no specific reject function in the provided eventService
-      // This would need to be implemented in the backend and service
-      // For now, we'll just show a toast message
-      toast.error("Event rejection functionality not implemented yet");
-    } catch (error) {
-      console.error("Error rejecting event:", error);
-      toast.error("An error occurred while rejecting the event");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-  
   const stats = {
     totalUsers: users.length,
     totalEvents: events.length,
@@ -316,12 +298,11 @@ const Admin = () => {
                       setFormData({ ...formData, role: value })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className=" w-full">
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="faculty">Faculty</SelectItem>
                       <SelectItem value="alumni">Alumni</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
@@ -335,7 +316,7 @@ const Admin = () => {
                       setFormData({ ...formData, bloodGroup: value })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className=" w-full">
                       <SelectValue placeholder="Select blood group" />
                     </SelectTrigger>
                     <SelectContent>
@@ -443,10 +424,14 @@ const Admin = () => {
       </div>
 
       <Tabs defaultValue="users">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="tours">Tours</TabsTrigger>
+          <TabsTrigger value="groups">Groups</TabsTrigger>
+          <TabsTrigger value="jobs">Job Portal</TabsTrigger>
+          <TabsTrigger value="community">Community</TabsTrigger>
+          <TabsTrigger value="donations">Donations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
@@ -603,7 +588,7 @@ const Admin = () => {
                                     variant="outline"
                                     size="icon"
                                     onClick={() =>
-                                      handleApproveEvent(event.id)
+                                      handleApproveEvent(event.id, "approved")
                                     }
                                     disabled={isActionLoading}
                                   >
@@ -612,7 +597,9 @@ const Admin = () => {
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    onClick={() => handleRejectEvent(event.id)}
+                                    onClick={() =>
+                                      handleApproveEvent(event.id, "rejected")
+                                    }
                                     disabled={isActionLoading}
                                   >
                                     <XCircle className="h-4 w-4 text-red-500" />
@@ -629,51 +616,310 @@ const Admin = () => {
             </CardContent>
           </Card>
         </TabsContent>
-
-        <TabsContent value="settings" className="space-y-4">
+        {/* <TabsContent value="tours" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Dashboard Settings</CardTitle>
-              <CardDescription>
-                Customize your admin dashboard experience.
-              </CardDescription>
+              <CardTitle>Tour Management</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="theme">Theme</Label>
-                <Select defaultValue="system">
-                  <SelectTrigger id="theme">
-                    <SelectValue placeholder="Select theme" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notifications">Email Notifications</Label>
-                <Select defaultValue="all">
-                  <SelectTrigger id="notifications">
-                    <SelectValue placeholder="Select notification preference" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All notifications</SelectItem>
-                    <SelectItem value="important">
-                      Important only
-                    </SelectItem>
-                    <SelectItem value="none">None</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full">
-                <Settings className="w-4 h-4 mr-2" />
-                Save Settings
-              </Button>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Guide</TableHead>
+                    <TableHead>Difficulty</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Deadline</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tours.map((tour) => (
+                    <TableRow key={tour.id}>
+                      <TableCell>{tour.title}</TableCell>
+                      <TableCell>{tour.author?.name}</TableCell>
+                      <TableCell>{tour.difficulty}</TableCell>
+                      <TableCell>৳{tour.price}</TableCell>
+                      <TableCell>
+                        {new Date(tour.deadline).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            event.status === "approved"
+                              ? "success"
+                              : event.status === "rejected"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {event.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          {event.status === "pending" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                  handleApproveEvent(event.id, "approved")
+                                }
+                                disabled={isActionLoading}
+                              >
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                  handleApproveEvent(event.id, "rejected")
+                                }
+                                disabled={isActionLoading}
+                              >
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="donations" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Blood Requests</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Blood Type</TableHead>
+                    <TableHead>Units</TableHead>
+                    <TableHead>Urgency</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bloodRequests.map((req) => (
+                    <TableRow key={req.id}>
+                      <TableCell>{req.bloodType}</TableCell>
+                      <TableCell>{req.unitsNeeded}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            req.urgencyLevel === "HIGH"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {req.urgencyLevel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{req.location}</TableCell>
+                      <TableCell>{req.contactPhone}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            event.status === "approved"
+                              ? "success"
+                              : event.status === "rejected"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {event.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          {event.status === "pending" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                  handleApproveEvent(event.id, "approved")
+                                }
+                                disabled={isActionLoading}
+                              >
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                  handleApproveEvent(event.id, "rejected")
+                                }
+                                disabled={isActionLoading}
+                              >
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="community" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Community Posts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Author</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {posts.map((post) => (
+                    <TableRow key={post.id}>
+                      <TableCell>{post.description}</TableCell>
+                      <TableCell>{post.location}</TableCell>
+                      <TableCell>{post.user?.name}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            event.status === "approved"
+                              ? "success"
+                              : event.status === "rejected"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {event.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          {event.status === "pending" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                  handleApproveEvent(event.id, "approved")
+                                }
+                                disabled={isActionLoading}
+                              >
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                  handleApproveEvent(event.id, "rejected")
+                                }
+                                disabled={isActionLoading}
+                              >
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="jobs" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Portal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Position</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Author</TableHead>
+                    <TableHead>Deadline</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {jobs.map((job) => (
+                    <TableRow key={job.id}>
+                      <TableCell>{job.title}</TableCell>
+                      <TableCell>{job.company}</TableCell>
+                      <TableCell>{job.author?.name}</TableCell>
+                      <TableCell>
+                        {new Date(job.deadline).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            event.status === "approved"
+                              ? "success"
+                              : event.status === "rejected"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {event.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          {event.status === "pending" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                  handleApproveEvent(event.id, "approved")
+                                }
+                                disabled={isActionLoading}
+                              >
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                  handleApproveEvent(event.id, "rejected")
+                                }
+                                disabled={isActionLoading}
+                              >
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent> */}
       </Tabs>
     </div>
   );

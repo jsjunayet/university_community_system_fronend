@@ -7,7 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { Createeventjoin, getMyeventJoin } from "@/services/eventJoinService";
+import {
+  Approvedeventjoin,
+  Createeventjoin,
+  getMyeventJoin,
+  Rejectedeventjoin,
+} from "@/services/eventJoinService";
 import { CreateEvent, getEvenUser, getOwnEvent } from "@/services/eventService";
 import {
   AlertCircle,
@@ -19,8 +24,10 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { EventManagementCard } from "../eventManageCart/EventManageMentCart";
 
 // Define interfaces based on the backend model
 interface User {
@@ -317,6 +324,19 @@ const Events = () => {
       toast.error("Failed to fetch your joined events. Please try again.");
     }
   };
+  const handleManageParticipant = async (
+    joinId: string,
+    action: "approve" | "reject",
+    meetLink?: string
+  ) => {
+    if (action === "approve" && meetLink) {
+      await Approvedeventjoin(joinId, { meetLink });
+      toast("Participant Approved");
+    } else if (action === "reject") {
+      await Rejectedeventjoin(joinId, { status: action });
+      toast("Participant Rejected");
+    }
+  };
 
   // Fetch events on component mount
   useEffect(() => {
@@ -353,9 +373,11 @@ const Events = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="browse">Browse Events</TabsTrigger>
           <TabsTrigger value="my-events">My Events</TabsTrigger>
+          <TabsTrigger value="manage">Manage</TabsTrigger>
+
           <TabsTrigger value="create">Create Event</TabsTrigger>
           {/* <TabsTrigger value="calendar">Calendar View</TabsTrigger> */}
         </TabsList>
@@ -496,9 +518,9 @@ const Events = () => {
 
         {/* My Events Tab */}
         <TabsContent value="my-events" className="space-y-6">
-          <h2 className="text-xl font-semibold">My Events</h2>
+          {/* <h2 className="text-xl font-semibold">My Events</h2> */}
 
-          {!user ? (
+          {/* {!user ? (
             <div className="text-center py-8">
               Please login to view your events
             </div>
@@ -549,7 +571,7 @@ const Events = () => {
                 </Card>
               ))}
             </div>
-          )}
+          )} */}
 
           <h2 className="text-xl font-semibold mt-8">Events I've Joined</h2>
 
@@ -558,9 +580,18 @@ const Events = () => {
               Please login to view joined events
             </div>
           ) : myJoinedEvents.length === 0 ? (
-            <div className="text-center py-8">
-              You haven't joined any events yet
-            </div>
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Events Join</h3>
+                <p className="text-muted-foreground mb-4">
+                  You haven't joined any events yet
+                </p>
+                <Button variant="hero" onClick={() => setActiveTab("browse")}>
+                  Visit Browse
+                </Button>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid gap-4">
               {myJoinedEvents.map((joinedEvent) => (
@@ -586,6 +617,15 @@ const Events = () => {
                               {joinedEvent.status}
                             </Badge>
                             <Badge variant="outline">Participant</Badge>
+                            {joinedEvent.status === "ACCEPTED" && (
+                              <Link
+                                href={joinedEvent.meetLink}
+                                target="_blank"
+                                className="text-blue-600 hover:text-blue-800 underline font-medium transition-colors"
+                              >
+                                Join Meeting
+                              </Link>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -613,7 +653,39 @@ const Events = () => {
             </div>
           )}
         </TabsContent>
+        <TabsContent value="manage" className="space-y-4 sm:space-y-6">
+          <h2 className="text-responsive-xl sm:text-xl font-semibold">
+            Manage My Events
+          </h2>
 
+          <div className="grid gap-4 sm:gap-6">
+            {myEvents?.map((event) => (
+              <EventManagementCard
+                key={event.id}
+                event={event}
+                isOrganizer={true}
+                onManageParticipant={handleManageParticipant}
+              />
+            ))}
+
+            {myEvents?.length === 0 && (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    No Events Organized
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    You haven't created any events yet.
+                  </p>
+                  <Button variant="hero" onClick={() => setActiveTab("create")}>
+                    Create Your First Event
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
         {/* Create Event Tab */}
         <TabsContent value="create" className="space-y-6">
           <h2 className="text-xl font-semibold">Create New Event</h2>
@@ -805,24 +877,6 @@ const Events = () => {
               <Plus className="w-4 h-4 mr-2" />
               {isEventLoading ? "Creating Event..." : "Create Event"}
             </Button>
-          </Card>
-        </TabsContent>
-
-        {/* Calendar View Tab */}
-        <TabsContent value="calendar" className="space-y-6">
-          <h2 className="text-xl font-semibold">Event Calendar</h2>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center py-12">
-                <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Calendar View</h3>
-                <p className="text-muted-foreground">
-                  Interactive calendar view will be implemented here with event
-                  scheduling and timeline visualization.
-                </p>
-              </div>
-            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

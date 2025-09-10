@@ -101,7 +101,10 @@ export const updateEvent = async (id: string, payload): Promise<any> => {
     throw new Error(error.message || "Something went wrong");
   }
 };
-export const ApprovedEvent = async (id: string, payload): Promise<any> => {
+export const ApprovedEvent = async (
+  id: string,
+  status: string
+): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {
@@ -113,7 +116,7 @@ export const ApprovedEvent = async (id: string, payload): Promise<any> => {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ status }),
       }
     );
     const result = await res.json();

@@ -161,9 +161,9 @@ const Community = () => {
             ? "https://example.com/uploads/image.jpg"
             : "", // In a real app, you'd upload the image first
       };
-
+      console.log(postData);
       const response = await createPost(postData);
-
+      console.log(response);
       if (response.success) {
         toast.success("Post created successfully!");
         setNewPostContent("");
@@ -713,20 +713,20 @@ const Community = () => {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <Avatar>
-                  <AvatarImage src={selectedPost.authorAvatar} />
+                  <AvatarImage src={selectedPost?.authorAvatar} />
                   <AvatarFallback>
-                    {selectedPost.authorName.charAt(0)}
+                    {selectedPost?.user?.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h4 className="font-semibold">{selectedPost.authorName}</h4>
+                  <h4 className="font-semibold">{selectedPost?.user?.name}</h4>
                   <p className="text-sm text-muted-foreground">
-                    {selectedPost.authorRole} •{" "}
-                    {selectedPost.timestamp.toLocaleString()}
+                    {selectedPost?.user?.role} •{" "}
+                    {selectedPost.createdAt.toLocaleString()}
                   </p>
                 </div>
               </div>
-              <p>{selectedPost.content}</p>
+              <p>{selectedPost.commentText}</p>
 
               <div className="space-y-3">
                 <h5 className="font-medium">
@@ -736,24 +736,24 @@ const Community = () => {
                   <div key={comment.id} className="space-y-2">
                     <div className="flex gap-2">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={comment.authorAvatar} />
+                        <AvatarImage src={selectedPost?.user?.name} />
                         <AvatarFallback>
-                          {comment.authorName.charAt(0)}
+                          {selectedPost?.user?.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 bg-muted rounded-lg p-3">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm">
-                            {comment.authorName}
+                            {comment.user.name}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {comment.timestamp.toLocaleString()}
+                            {comment.createdAt.toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm">{comment.content}</p>
+                        <p className="text-sm">{comment.commentText}</p>
                       </div>
                     </div>
-                    {comment.replies.map((reply) => (
+                    {comment?.replies?.map((reply) => (
                       <div key={reply.id} className="flex gap-2 ml-10">
                         <Avatar className="w-6 h-6">
                           <AvatarImage src={reply.authorAvatar} />
