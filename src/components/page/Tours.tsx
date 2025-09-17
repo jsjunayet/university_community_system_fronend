@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -15,7 +16,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import {
+  ApprovedOrRejectedStatusGroupJoin,
+  CreateTourGroupJoin,
+  getMyGroupJoin,
+} from "@/services/TourJoinService";
+import {
+  CreateTourGroup,
+  getAllUserTourGroup,
+  getOwnTourGroup,
+} from "@/services/tourService";
 import {
   Calendar,
   Camera,
@@ -27,16 +37,66 @@ import {
   Plus,
   Route,
   User,
-  Users,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { TourManagementCard } from "../TourManageMentCart/TourManagementCard";
+
+// Skeleton components for loading states
+const TourCardSkeleton = () => (
+  <Card className="hover:shadow-medium transition-shadow">
+    <CardHeader className="pb-4">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-5/6 mb-4" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-4">
+            {Array(3).fill(0).map((_, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-4">
+            <div className="font-medium mb-2 flex items-center gap-2">
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <Skeleton className="h-4 w-full" />
+          </div>
+
+          <div className="mb-4">
+            <div className="font-medium mb-2 flex items-center gap-2">
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <Skeleton className="h-4 w-full" />
+          </div>
+        </div>
+
+        <div className="text-right ml-6">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </div>
+      </div>
+    </CardHeader>
+  </Card>
+);
 
 const Tours = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("available");
+  const [isLoading, setIsLoading] = useState(true);
 
   // Group tours state with proper types
   interface TourJoin {
@@ -68,55 +128,74 @@ const Tours = () => {
     tourJoins: TourJoin[];
   }
 
-  const [groupTours, setGroupTours] = useState<GroupTour[]>([
-    {
-      id: "1",
-      title: "Cox's Bazar Beach Adventure",
-      description:
-        "Explore the world's longest natural sea beach with fellow university students",
-      difficulty: "Easy",
-      duration: "3 days 2 nights",
-      route: "Dhaka → Cox's Bazar → Inani Beach → Himchari",
-      highlights:
-        "Beach activities, local seafood, sunset views, cultural sites",
-      deadline: new Date("2024-03-15"),
-      bkashNumber: "01712345678",
-      price: "8500",
-      status: "approved",
-      authorId: "2",
-      tourJoins: [
-        {
-          id: "tj1",
-          userId: "1",
-          userName: "John Doe",
-          userEmail: "john@university.edu",
-          bkashNumber: "01987654321",
-          trxId: "TXN123456789",
-          amount: 8500,
-          verified: true,
-          status: "PENDING",
-          createdAt: new Date(),
-        },
-      ],
-    },
-    {
-      id: "2",
-      title: "Sylhet Tea Garden Tour",
-      description:
-        "Experience the beauty of tea gardens and natural landscapes",
-      difficulty: "Moderate",
-      duration: "2 days 1 night",
-      route: "Dhaka → Sylhet → Srimangal → Tea Gardens",
-      highlights: "Tea tasting, nature walks, local culture, photography",
-      deadline: new Date("2024-03-20"),
-      bkashNumber: "01812345678",
-      price: "6500",
-      status: "approved",
-      authorId: user?.id || "1",
-      tourJoins: [],
-    },
-  ]);
-
+  const [groupTours, setGroupTours] = useState<GroupTour[]>([]);
+  const [AvaiableTour, setAvaiableTour] = useState<GroupTour[]>([]);
+  const [myTours, setMyTours] = useState<TourJoin[]>([]);
+  console.log(myTours, "my");
+  
+  const fetchMyTour = async () => {
+    try {
+      const res = await getOwnTourGroup();
+      if (res.success) {
+        setGroupTours(res.data);
+      } else {
+        toast.error(res.message || "Failed to fetch your tours");
+      }
+    } catch (error) {
+      console.error("Error fetching your tours:", error);
+      toast.error("An error occurred while fetching your tours");
+    }
+  };
+  
+  const fetchAllTour = async () => {
+    try {
+      setIsLoading(true);
+      const res = await getAllUserTourGroup();
+      if (res.success) {
+        setAvaiableTour(res.data);
+      } else {
+        toast.error(res.message || "Failed to fetch available tours");
+      }
+    } catch (error) {
+      console.error("Error fetching available tours:", error);
+      toast.error("An error occurred while fetching available tours");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const fetchOwn = async () => {
+    try {
+      const res = await getMyGroupJoin();
+      if (res.success) {
+        setMyTours(res.data);
+      } else {
+        toast.error(res.message || "Failed to fetch joined tours");
+      }
+    } catch (error) {
+      console.error("Error fetching joined tours:", error);
+      toast.error("An error occurred while fetching joined tours");
+    }
+  };
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          fetchMyTour(),
+          fetchAllTour(),
+          user ? fetchOwn() : Promise.resolve()
+        ]);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [user]);
   const [newTourData, setNewTourData] = useState({
     title: "",
     description: "",
@@ -128,96 +207,6 @@ const Tours = () => {
     bkashNumber: "",
     price: "",
   });
-
-  // Mock tours data
-  const availableTours = [
-    {
-      id: "1",
-      title: "Historic Campus Walking Tour",
-      description:
-        "Explore the rich history and beautiful architecture of our century-old campus.",
-      date: "2024-02-18",
-      time: "10:00",
-      duration: 2.5,
-      maxParticipants: 20,
-      currentParticipants: 12,
-      guide: "Prof. Sarah Martinez",
-      meetingPoint: "Main Gate Entrance",
-      route: [
-        "Historic Building",
-        "Library",
-        "Memorial Garden",
-        "Clock Tower",
-        "Administration Hall",
-      ],
-      difficulty: "Easy",
-      highlights: ["Architecture", "History", "Photo Spots"],
-      status: "upcoming",
-    },
-    {
-      id: "2",
-      title: "Science & Innovation Labs Tour",
-      description:
-        "Get an inside look at cutting-edge research facilities and laboratories.",
-      date: "2024-02-22",
-      time: "14:00",
-      duration: 3,
-      maxParticipants: 15,
-      currentParticipants: 8,
-      guide: "Dr. Michael Chen",
-      meetingPoint: "Science Building Lobby",
-      route: [
-        "Physics Lab",
-        "Chemistry Lab",
-        "Innovation Center",
-        "Research Wing",
-        "Tech Hub",
-      ],
-      difficulty: "Moderate",
-      highlights: ["Technology", "Research", "Innovation"],
-      status: "upcoming",
-    },
-    {
-      id: "3",
-      title: "City Cultural Heritage Tour",
-      description:
-        "Discover the cultural landmarks and hidden gems of our vibrant city.",
-      date: "2024-02-25",
-      time: "09:00",
-      duration: 4,
-      maxParticipants: 25,
-      currentParticipants: 22,
-      guide: "Maya Rodriguez",
-      meetingPoint: "University Bus Stop",
-      route: [
-        "Museum Quarter",
-        "Art District",
-        "Historic Market",
-        "Cultural Center",
-        "Riverside Park",
-      ],
-      difficulty: "Moderate",
-      highlights: ["Culture", "Art", "Food", "Shopping"],
-      status: "upcoming",
-    },
-  ];
-
-  const myTours = [
-    {
-      id: "1",
-      title: "Historic Campus Walking Tour",
-      date: "2024-02-18",
-      confirmationStatus: "confirmed",
-      status: "upcoming",
-    },
-    {
-      id: "2",
-      title: "Alumni Garden Tour",
-      date: "2024-01-15",
-      confirmationStatus: "confirmed",
-      status: "completed",
-    },
-  ];
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
@@ -245,30 +234,9 @@ const Tours = () => {
     }
   };
 
-  const handleJoinTour = (tourId: string) => {
-    toast({
-      title: "Tour Registration Successful!",
-      description:
-        "You've been registered for the tour. Check your email for confirmation details.",
-    });
-  };
-
-  const handleCancelRegistration = (tourId: string) => {
-    toast({
-      title: "Registration Cancelled",
-      description: "Your tour registration has been cancelled successfully.",
-      variant: "destructive",
-    });
-  };
-
   // Group tour functions
-  const handleCreateTour = () => {
+  const handleCreateTour = async () => {
     if (!newTourData.title || !newTourData.description || !newTourData.price) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -276,12 +244,14 @@ const Tours = () => {
       id: Date.now().toString(),
       ...newTourData,
       deadline: new Date(newTourData.deadline),
-      status: "pending",
-      authorId: user?.id || "",
-      tourJoins: [],
     };
-
-    setGroupTours([...groupTours, newTour]);
+    console.log(newTour);
+    const res = await CreateTourGroup(newTour);
+    if (res?.success) {
+      toast(`${res?.message}`);
+    } else {
+      toast(`${res?.message}`);
+    }
     setNewTourData({
       title: "",
       description: "",
@@ -293,11 +263,8 @@ const Tours = () => {
       bkashNumber: "",
       price: "",
     });
-
-    toast({
-      title: "Tour Created",
-      description: "Your group tour has been created and is pending approval",
-    });
+    setSelectedTour(null);
+    toast.success("Successfull Create Group tour");
   };
 
   const handleTourJoin = (tourId: string, joinData: any) => {
@@ -321,7 +288,7 @@ const Tours = () => {
     );
   };
 
-  const handleApproveJoin = (joinId: string) => {
+  const handleApproveJoin = async (joinId: string) => {
     setGroupTours((tours) =>
       tours.map((tour) => ({
         ...tour,
@@ -330,14 +297,10 @@ const Tours = () => {
         ),
       }))
     );
-
-    toast({
-      title: "Participant Approved",
-      description: "The participant has been approved for the tour",
-    });
+    await ApprovedOrRejectedStatusGroupJoin(joinId, "ACCEPTED");
   };
 
-  const handleRejectJoin = (joinId: string) => {
+  const handleRejectJoin = async (joinId: string) => {
     setGroupTours((tours) =>
       tours.map((tour) => ({
         ...tour,
@@ -346,12 +309,7 @@ const Tours = () => {
         ),
       }))
     );
-
-    toast({
-      title: "Participant Rejected",
-      description: "The participant has been rejected from the tour",
-      variant: "destructive",
-    });
+    await ApprovedOrRejectedStatusGroupJoin(joinId, "REJECTED");
   };
   const [joinFormData, setJoinFormData] = useState({
     bkashNumber: "",
@@ -359,17 +317,23 @@ const Tours = () => {
   });
   const [selectedTour, setSelectedTour] = useState<any>(null);
 
-  const handleJoinSubmit = () => {
+  const handleJoinSubmit = async () => {
     if (!selectedTour) return;
 
     const payload = {
       tourId: selectedTour.id,
       bkashNumber: joinFormData.bkashNumber,
       trxId: joinFormData.trxId,
+      amount: parseFloat(selectedTour.price),
     };
-
-    console.log("Join Request:", payload);
-
+    console.log(payload);
+    const res = await CreateTourGroupJoin(payload);
+    console.log(res);
+    if (res.success) {
+      toast.success(`${res.message}`);
+    } else {
+      toast.error(`${res.message}`);
+    }
     // TODO: Send to backend API
     // await fetch("/api/join-tour", { method: "POST", body: JSON.stringify(payload) });
 
@@ -379,9 +343,6 @@ const Tours = () => {
   };
   const myCreatedTours = groupTours.filter(
     (tour) => tour.authorId === user?.id
-  );
-  const myJoinedTours = groupTours.filter((tour) =>
-    tour.tourJoins.some((join) => join.userId === user?.id)
   );
 
   return (
@@ -444,210 +405,170 @@ const Tours = () => {
           </div>
 
           <div className="grid gap-6">
-            {availableTours.map((tour) => (
-              <Card
-                key={tour.id}
-                className="hover:shadow-medium transition-shadow"
-              >
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold">{tour.title}</h3>
-                        <Badge variant={getDifficultyColor(tour.difficulty)}>
-                          {tour.difficulty}
-                        </Badge>
-                        <Badge variant="outline">{tour.duration}h</Badge>
-                      </div>
-                      <p className="text-muted-foreground mb-4">
-                        {tour.description}
-                      </p>
+            {isLoading ? (
+              // Show skeleton loading while data is being fetched
+              Array(3).fill(0).map((_, index) => (
+                <TourCardSkeleton key={index} />
+              ))
+            ) : (
+              AvaiableTour?.map((tour) => (
+                <Card
+                  key={tour.id}
+                  className="hover:shadow-medium transition-shadow"
+                >
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-xl font-semibold">{tour.title}</h3>
+                          <Badge variant={getDifficultyColor(tour.difficulty)}>
+                            {tour.difficulty}
+                          </Badge>
+                          <Badge variant="outline">{tour.duration}h</Badge>
+                        </div>
+                        <p className="text-muted-foreground mb-4">
+                          {tour.description}
+                        </p>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                          <span>
-                            {new Date(tour.date).toLocaleDateString()}
-                          </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span>
+                              {new Date(tour.deadline).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span>
+                              {tour.time} ({tour.duration}h)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                            <span>By {tour.author.name}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-muted-foreground" />
-                          <span>
-                            {tour.time} ({tour.duration}h)
-                          </span>
+
+                        {/* Tour Route */}
+                        <div className="mb-4">
+                          <h4 className="font-medium mb-2 flex items-center gap-2">
+                            <Route className="w-4 h-4" />
+                            Tour Route
+                          </h4>
+                          {tour.route}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                          <span>{tour.guide}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
-                          <span>{tour.meetingPoint}</span>
+
+                        {/* Highlights */}
+                        <div className="mb-4">
+                          <h4 className="font-medium mb-2 flex items-center gap-2">
+                            <Camera className="w-4 h-4" />
+                            Highlights
+                          </h4>
+                          <div>{tour.highlights}</div>
                         </div>
                       </div>
 
-                      {/* Tour Route */}
-                      <div className="mb-4">
-                        <h4 className="font-medium mb-2 flex items-center gap-2">
-                          <Route className="w-4 h-4" />
-                          Tour Route
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {tour.route.map((stop, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center gap-1"
-                            >
-                              <Badge variant="outline" className="text-xs">
-                                {index + 1}. {stop}
-                              </Badge>
-                              {index < tour.route.length - 1 && (
-                                <span className="text-muted-foreground">→</span>
+                      <div className="text-right ml-6">
+                        <div className="space-y-2">
+                          {/* <Button
+                            variant="hero"
+                            size="sm"
+                            onClick={() => handleJoinTour(tour.id)}
+                            disabled={
+                              tour.currentParticipants >= tour.maxParticipants
+                            }
+                            className="w-full"
+                          >
+                            {tour.currentParticipants >= tour.maxParticipants
+                              ? "Full"
+                              : "Join Tour"}
+                          </Button> */}
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="hero"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => setSelectedTour(tour)}
+                                disabled={
+                                  tour.currentParticipants >= tour.maxParticipants
+                                }
+                              >
+                                {tour.currentParticipants >= tour.maxParticipants
+                                  ? "Full"
+                                  : "Join Tour"}
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>
+                                  Join {selectedTour?.title || "Tour"}
+                                </DialogTitle>
+                              </DialogHeader>
+
+                              {selectedTour && (
+                                <div className="space-y-4">
+                                  <div className="bg-muted p-4 rounded-lg">
+                                    <p className="text-sm font-medium mb-2">
+                                      Payment Details:
+                                    </p>
+                                    <p className="text-sm">
+                                      Amount: ৳{selectedTour.price}
+                                    </p>
+                                    <p className="text-sm">
+                                      bKash: {selectedTour.bkashNumber}
+                                    </p>
+                                  </div>
+
+                                  <div>
+                                    <label className="text-sm font-medium">
+                                      Your bKash Number
+                                    </label>
+                                    <Input
+                                      value={joinFormData.bkashNumber}
+                                      onChange={(e) =>
+                                        setJoinFormData((prev) => ({
+                                          ...prev,
+                                          bkashNumber: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="01XXXXXXXXX"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="text-sm font-medium">
+                                      Transaction ID
+                                    </label>
+                                    <Input
+                                      value={joinFormData.trxId}
+                                      onChange={(e) =>
+                                        setJoinFormData((prev) => ({
+                                          ...prev,
+                                          trxId: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="Transaction ID from bKash"
+                                    />
+                                  </div>
+
+                                  <Button
+                                    onClick={handleJoinSubmit}
+                                    className="w-full"
+                                  >
+                                    Submit Join Request
+                                  </Button>
+                                </div>
                               )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Highlights */}
-                      <div className="mb-4">
-                        <h4 className="font-medium mb-2 flex items-center gap-2">
-                          <Camera className="w-4 h-4" />
-                          Highlights
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {tour.highlights.map((highlight, index) => (
-                            <Badge
-                              key={index}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {highlight}
-                            </Badge>
-                          ))}
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </div>
                     </div>
-
-                    <div className="text-right ml-6">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Users className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {tour.currentParticipants}/{tour.maxParticipants}
-                        </span>
-                      </div>
-                      <div className="w-24 bg-muted rounded-full h-2 mb-4">
-                        <div
-                          className="bg-primary h-2 rounded-full"
-                          style={{
-                            width: `${
-                              (tour.currentParticipants /
-                                tour.maxParticipants) *
-                              100
-                            }%`,
-                          }}
-                        ></div>
-                      </div>
-
-                      <div className="space-y-2">
-                        {/* <Button
-                          variant="hero"
-                          size="sm"
-                          onClick={() => handleJoinTour(tour.id)}
-                          disabled={
-                            tour.currentParticipants >= tour.maxParticipants
-                          }
-                          className="w-full"
-                        >
-                          {tour.currentParticipants >= tour.maxParticipants
-                            ? "Full"
-                            : "Join Tour"}
-                        </Button> */}
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="hero"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => setSelectedTour(tour)}
-                              disabled={
-                                tour.currentParticipants >= tour.maxParticipants
-                              }
-                            >
-                              {tour.currentParticipants >= tour.maxParticipants
-                                ? "Full"
-                                : "Join Tour"}
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>
-                                Join {selectedTour?.title || "Tour"}
-                              </DialogTitle>
-                            </DialogHeader>
-
-                            {selectedTour && (
-                              <div className="space-y-4">
-                                <div className="bg-muted p-4 rounded-lg">
-                                  <p className="text-sm font-medium mb-2">
-                                    Payment Details:
-                                  </p>
-                                  <p className="text-sm">
-                                    Amount: ৳{selectedTour.price}
-                                  </p>
-                                  <p className="text-sm">
-                                    bKash: {selectedTour.bkashNumber}
-                                  </p>
-                                </div>
-
-                                <div>
-                                  <label className="text-sm font-medium">
-                                    Your bKash Number
-                                  </label>
-                                  <Input
-                                    value={joinFormData.bkashNumber}
-                                    onChange={(e) =>
-                                      setJoinFormData((prev) => ({
-                                        ...prev,
-                                        bkashNumber: e.target.value,
-                                      }))
-                                    }
-                                    placeholder="01XXXXXXXXX"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="text-sm font-medium">
-                                    Transaction ID
-                                  </label>
-                                  <Input
-                                    value={joinFormData.trxId}
-                                    onChange={(e) =>
-                                      setJoinFormData((prev) => ({
-                                        ...prev,
-                                        trxId: e.target.value,
-                                      }))
-                                    }
-                                    placeholder="Transaction ID from bKash"
-                                  />
-                                </div>
-
-                                <Button
-                                  onClick={handleJoinSubmit}
-                                  className="w-full"
-                                >
-                                  Submit Join Request
-                                </Button>
-                              </div>
-                            )}
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            ))}
+                  </CardHeader>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
 
@@ -820,7 +741,12 @@ const Tours = () => {
           </div>
 
           <div className="grid gap-6">
-            {groupTours.map((tour) => (
+            {isLoading ? (
+              // Show skeleton loading while data is being fetched
+              Array(3).fill(0).map((_, index) => (
+                <TourCardSkeleton key={index} />
+              ))
+            ) : groupTours.map((tour) => (
               <TourManagementCard
                 key={tour.id}
                 tour={tour}
@@ -833,45 +759,73 @@ const Tours = () => {
           </div>
 
           {/* My Created Tours */}
-          {myCreatedTours.length > 0 && (
+          {myCreatedTours && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">My Created Tours</h3>
               <div className="grid gap-4">
-                {myCreatedTours.map((tour) => (
-                  <Card key={tour.id} className="bg-muted/50">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-lg">
-                            {tour.title}
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {tour.description}
-                          </p>
-                          <div className="flex gap-2 mt-2">
-                            <Badge
-                              variant={
-                                tour.status === "approved"
-                                  ? "success"
-                                  : "secondary"
-                              }
-                            >
-                              {tour.status}
-                            </Badge>
-                            <Badge variant="outline">
-                              {tour.tourJoins.length} participants
-                            </Badge>
+                {isLoading ? (
+                  // Show skeleton loading while data is being fetched
+                  Array(3).fill(0).map((_, index) => (
+                    <Card key={index} className="bg-muted/50">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div className="w-full">
+                            <Skeleton className="h-6 w-48 mb-2" />
+                            <Skeleton className="h-4 w-full mb-2" />
+                            <Skeleton className="h-4 w-5/6 mb-2" />
+                            <div className="flex gap-2 mt-2">
+                              <Skeleton className="h-5 w-20" />
+                              <Skeleton className="h-5 w-32" />
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Skeleton className="h-5 w-16" />
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <DollarSign className="w-4 h-4" />৳{tour.price}
+                      </CardHeader>
+                    </Card>
+                  ))
+                ) : myCreatedTours.length > 0 ? (
+                  myCreatedTours.map((tour) => (
+                    <Card key={tour.id} className="bg-muted/50">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-lg">
+                              {tour.title}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {tour.description}
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                              <Badge
+                                variant={
+                                  tour.status === "approved"
+                                    ? "success"
+                                    : "secondary"
+                                }
+                              >
+                                {tour.status}
+                              </Badge>
+                              <Badge variant="outline">
+                                {tour.tourJoins.length} participants
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <DollarSign className="w-4 h-4" />৳{tour.price}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                ))}
+                      </CardHeader>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-muted-foreground">You haven't created any tours yet</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -882,7 +836,12 @@ const Tours = () => {
           <h2 className="text-xl font-semibold">My Tour Registrations</h2>
 
           <div className="grid gap-4">
-            {myTours.map((tour) => (
+            {isLoading ? (
+              // Show skeleton loading while data is being fetched
+              Array(3).fill(0).map((_, index) => (
+                <TourCardSkeleton key={index} />
+              ))
+            ) : myTours.map((tour) => (
               <Card key={tour.id}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">

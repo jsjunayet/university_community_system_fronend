@@ -58,7 +58,26 @@ export const loginUser = async (userData: FieldValues) => {
     return Error(error);
   }
 };
+export const tokenFornotification = async (userData: FieldValues) => {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_API}/notify/save-token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+      }
+    );
 
+    const result = await res.json();
+
+    return result;
+  } catch (error: any) {
+    return Error(error);
+  }
+};
 // export const dashbaordOverview = async (): Promise<any> => {
 //   const token = (await cookies()).get("accessToken")!.value;
 
@@ -156,6 +175,30 @@ export const getAlluser = async () => {
     return Error(error.message);
   }
 };
+export const getAllDashbaordData = async () => {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_API}/user/admin/metadata`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${
+            (await cookies()).get("accessToken")!.value
+          }`,
+          "Content-Type": "application/json",
+        },
+        next: {
+          tags: ["loginUser"],
+        },
+      }
+    );
+
+    const data = await res.json();
+    return data;
+  } catch (error: any) {
+    return Error(error.message);
+  }
+};
 export const DeletedUser = async (id: string) => {
   try {
     const res = await fetch(
@@ -230,15 +273,15 @@ export const PasswordChange = async (payload) => {
 export const getCurrentUser = async () => {
   try {
     const accessToken = (await cookies()).get("accessToken")?.value;
-    
+
     if (!accessToken) {
       return null;
     }
-    
+
     // First decode the token to get basic user info
     const decodedData = jwtDecode(accessToken);
     console.log("Decoded token:", decodedData);
-    
+
     // Then fetch complete user data from the server
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_API}/user/me`, {
       method: "GET",
@@ -250,16 +293,16 @@ export const getCurrentUser = async () => {
         tags: ["loginUser"],
       },
     });
-    
+
     if (!res.ok) {
       console.error("Failed to fetch user data", res.status);
       // If server request fails, still return decoded token data as fallback
       return decodedData;
     }
-    
+
     const userData = await res.json();
     console.log("Fetched user data:", userData);
-    
+
     if (userData.success) {
       return userData.data;
     } else {

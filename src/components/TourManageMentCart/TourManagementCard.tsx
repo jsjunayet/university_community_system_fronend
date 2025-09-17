@@ -108,13 +108,12 @@ export const TourManagementCard = ({
     }
   };
 
-  const pendingJoins = tour.tourJoins.filter(
+  const pendingJoins = tour.tourJoins?.filter(
     (join) => join.status === "PENDING"
   );
-  const approvedJoins = tour.tourJoins.filter(
+  const approvedJoins = tour.tourJoins?.filter(
     (join) => join.status === "ACCEPTED"
   );
-
   return (
     <Card className="hover:shadow-medium transition-shadow">
       <CardHeader>
@@ -171,7 +170,7 @@ export const TourManagementCard = ({
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm">
-                {tour.tourJoins.length} participants
+                {tour.tourJoins?.length} participants
               </span>
             </div>
           </div>
@@ -184,12 +183,16 @@ export const TourManagementCard = ({
             <div className="flex items-center justify-between">
               <h4 className="font-medium">Manage Participants</h4>
               <div className="flex gap-2">
-                <Badge variant="secondary">{pendingJoins.length} pending</Badge>
-                <Badge variant="success">{approvedJoins.length} approved</Badge>
+                <Badge variant="secondary">
+                  {pendingJoins?.length} pending
+                </Badge>
+                <Badge variant="success">
+                  {approvedJoins?.length} approved
+                </Badge>
               </div>
             </div>
 
-            {tour.tourJoins.length > 0 ? (
+            {tour.tourJoins?.length > 0 ? (
               <div className="space-y-3">
                 {tour.tourJoins.map((join) => (
                   <div
@@ -199,9 +202,11 @@ export const TourManagementCard = ({
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
                         <div>
-                          <p className="font-medium text-sm">{join.userName}</p>
+                          <p className="font-medium text-sm">
+                            {join.user?.name}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {join.userEmail}
+                            {join.user?.email}
                           </p>
                         </div>
                         <Badge
@@ -231,9 +236,9 @@ export const TourManagementCard = ({
                           </DialogHeader>
                           <div className="space-y-3">
                             <div>
-                              <p className="font-medium">{join.userName}</p>
+                              <p className="font-medium">{join?.user?.name}</p>
                               <p className="text-sm text-muted-foreground">
-                                {join.userEmail}
+                                {join?.user?.email}
                               </p>
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -258,9 +263,7 @@ export const TourManagementCard = ({
                             </div>
                             <div>
                               <p className="font-medium">Applied</p>
-                              <p className="text-sm">
-                                {join.createdAt.toLocaleDateString()}
-                              </p>
+                              <p className="text-sm">{join?.createdAt}</p>
                             </div>
                           </div>
                         </DialogContent>

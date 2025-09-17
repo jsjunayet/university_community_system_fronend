@@ -11,7 +11,18 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   setUser: (user: User | null) => void;
 }
-
+// export const saveFcmToken = async () => {
+//   try {
+//     const fcmToken = await requestForToken(); // Get token
+//     if (fcmToken) {
+//       const saveToken = httpsCallable(functions, "saveToken");
+//       await saveToken({ token: fcmToken });
+//       console.log("FCM token saved successfully");
+//     }
+//   } catch (error) {
+//     console.error("Error saving FCM token:", error);
+//   }
+// };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -25,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const currentUser = await getCurrentUser();
       console.log("Fetched current user:", currentUser);
+      // saveFcmToken();
       setUserState(currentUser as User | null);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -36,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     fetchUser();
+    // saveFcmToken();
   }, []);
 
   const logoutUser = () => {

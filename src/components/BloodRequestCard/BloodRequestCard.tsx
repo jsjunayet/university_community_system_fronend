@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertTriangle,
   Calendar,
@@ -25,7 +25,7 @@ import { useState } from "react";
 
 interface BloodRequest {
   id: string;
-  bloodType: string;
+  bloodGroup: string;
   location: string;
   date: string;
   notes?: string;
@@ -34,7 +34,7 @@ interface BloodRequest {
     id: string;
     name: string;
     email: string;
-    phone?: string;
+    contactPhone?: string;
   };
   donations: Array<{
     id: string;
@@ -52,7 +52,7 @@ interface BloodRequest {
 
 interface BloodRequestCardProps {
   request: BloodRequest;
-  userBloodType?: string;
+  bloodGroup?: string;
   isOwnRequest?: boolean;
   onRespond?: (
     requestId: string,
@@ -62,13 +62,13 @@ interface BloodRequestCardProps {
 
 export const BloodRequestCard = ({
   request,
-  userBloodType,
+  bloodGroup,
   isOwnRequest = false,
   onRespond,
 }: BloodRequestCardProps) => {
-  const { toast } = useToast();
   const [selectedDonation, setSelectedDonation] = useState<any>(null);
-
+  const { user } = useAuth();
+  console.log(user);
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
       case "critical":
@@ -99,26 +99,15 @@ export const BloodRequestCard = ({
 
   const handleJoinRequest = () => {
     onRespond?.(request.id, "join");
-    toast({
-      title: "Request Sent",
-      description: "Your donation request has been sent to the requester.",
-    });
   };
 
   const handleManageDonation = (
     donationId: string,
-    action: "approve" | "reject"
+    action: "ACCEPTED" | "REJECTED"
   ) => {
     onRespond?.(donationId, action);
-    toast({
-      title: `Donation ${action === "approve" ? "Approved" : "Rejected"}`,
-      description: `The donation request has been ${
-        action === "approve" ? "approved" : "rejected"
-      }.`,
-    });
   };
-
-  const bloodTypeMatches = userBloodType === request.bloodType;
+  const bloodGroupMatches = bloodGroup == request.bloodGroup;
 
   return (
     <Card
@@ -137,13 +126,13 @@ export const BloodRequestCard = ({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h3 className="font-semibold text-responsive-lg sm:text-lg">
-                  {request.bloodType} Blood Needed
+                  {request.bloodGroup} Blood Needed
                 </h3>
                 <Badge
                   variant={getUrgencyColor(request.urgency)}
                   className="text-xs"
                 >
-                  {request.urgency.toUpperCase()}
+                  {request.urgency}
                 </Badge>
               </div>
               <p className="text-responsive sm:text-sm text-muted-foreground truncate">
@@ -183,7 +172,7 @@ export const BloodRequestCard = ({
           <div className="flex items-center gap-2">
             <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
             <span className="truncate">
-              {request.requester.phone || "Not provided"}
+              {request.contactPhone || "Not provided"}
             </span>
           </div>
         </div>
@@ -195,8 +184,8 @@ export const BloodRequestCard = ({
               variant="hero"
               size="sm"
               onClick={handleJoinRequest}
-              disabled={!bloodTypeMatches}
-              className="text-responsive sm:text-sm"
+              disabled={!bloodGroupMatches}
+              className="text-responsive sm:text-sm text-white"
             >
               <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
               Respond to Request
@@ -204,23 +193,36 @@ export const BloodRequestCard = ({
             <Button
               variant="outline"
               size="sm"
+              asChild
               className="text-responsive sm:text-sm"
             >
-              <Phone className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-              Contact Requester
+              <a
+                href={`https://wa.me/${request.contactPhone}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Phone className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                Contact Requester
+              </a>
             </Button>
 
-            {!bloodTypeMatches && (
+            {user?.bloodGroup !== request?.bloodGroup && (
               <p className="text-xs text-muted-foreground mt-1">
-                Your blood type ({userBloodType}) doesn't match (
-                {request.bloodType})
+                Your blood type ({user?.bloodGroup}) doesn't match (
+                {request?.bloodGroup})
+              </p>
+            )}
+
+            {user?.bloodGroup === request?.bloodGroup && (
+              <p className="text-xs text-green-600 mt-1">
+                ✅ Your blood type matches the request!
               </p>
             )}
           </div>
         )}
 
         {/* Management section for own requests */}
-        {isOwnRequest && request.donations.length > 0 && (
+        {isOwnRequest && request.donations?.length > 0 && (
           <div className="border-t pt-3 sm:pt-4 space-y-3">
             <h4 className="font-medium text-responsive sm:text-sm">
               Donation Responses ({request.donations.length})
@@ -257,7 +259,7 @@ export const BloodRequestCard = ({
                         size="sm"
                         variant="hero"
                         onClick={() =>
-                          handleManageDonation(donation.id, "approve")
+                          handleManageDonation(donation.id, "ACCEPTED")
                         }
                         className="flex-1 sm:flex-none text-xs"
                       >
@@ -268,7 +270,7 @@ export const BloodRequestCard = ({
                         size="sm"
                         variant="outline"
                         onClick={() =>
-                          handleManageDonation(donation.id, "reject")
+                          handleManageDonation(donation.id, "REJECTED")
                         }
                         className="flex-1 sm:flex-none text-xs"
                       >

@@ -3,8 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getCurrentUser, loginUser } from "@/services/authSeverice";
 import { useAuth } from "@/contexts/AuthContext";
+import { requestForToken } from "@/lib/firebase";
+import {
+  getCurrentUser,
+  loginUser,
+  tokenFornotification,
+} from "@/services/authSeverice";
 import { GraduationCap, Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -28,10 +33,21 @@ const LoginPage = () => {
       if (res.success) {
         // Fetch user data immediately after successful login
         const currentUser = await getCurrentUser();
-        setUser(currentUser); // Update auth context with user data
-        
-        toast.success(res.message || "Successfully logged in!");
+        setUser(currentUser, "current user"); // Update auth context with user data
 
+        toast.success(res.message || "Successfully logged in!");
+        const fcmToken = await requestForToken();
+
+        if (fcmToken) {
+          // 🔹 Step 3: token backend এ save করো
+          const res = await tokenFornotification({
+            userId: currentUser.id,
+            token: fcmToken,
+          });
+          console.log(res);
+        }
+
+        // await saveFcmToken();
         // Role-based redirect
         router.push("/dashboard");
       } else {

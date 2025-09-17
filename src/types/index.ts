@@ -2,8 +2,9 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: "student" | "alumni" | "admin";
+  role: "student" | "alumni" | "admin" | "superAdmin";
   avatar?: string;
+  image?: string; // Added for profile image compatibility
   department?: string;
   graduationYear?: number;
   bloodType?: string;

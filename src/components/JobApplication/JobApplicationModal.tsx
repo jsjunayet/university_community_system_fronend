@@ -28,18 +28,12 @@ export const JobApplicationModal = ({
     email: "",
     position: jobTitle,
     resume: "",
-    coverLetter: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name || !formData.email || !formData.resume) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -55,27 +49,9 @@ export const JobApplicationModal = ({
       email: "",
       position: jobTitle,
       resume: "",
-      coverLetter: "",
     });
 
     onClose();
-
-    toast({
-      title: "Application Submitted",
-      description: "Your job application has been submitted successfully",
-    });
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // In a real app, you would upload to a file storage service
-      setFormData((prev) => ({ ...prev, resume: file.name }));
-      toast({
-        title: "Resume Uploaded",
-        description: `${file.name} has been uploaded successfully`,
-      });
-    }
   };
 
   return (
@@ -134,7 +110,7 @@ export const JobApplicationModal = ({
                 <Input
                   id="resume"
                   type="text"
-                  value={formData.position}
+                  value={formData.resume}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -146,22 +122,6 @@ export const JobApplicationModal = ({
               </div>
             </div>
           </div>
-
-          {/* <div>
-            <Label htmlFor="coverLetter">Cover Letter</Label>
-            <Textarea
-              id="coverLetter"
-              value={formData.coverLetter}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  coverLetter: e.target.value,
-                }))
-              }
-              placeholder="Write a brief cover letter explaining why you're interested in this position..."
-              rows={4}
-            />
-          </div> */}
 
           <div className="bg-muted p-4 rounded-lg">
             <h4 className="font-medium mb-2">Application Guidelines:</h4>

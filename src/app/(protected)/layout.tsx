@@ -1,6 +1,6 @@
 "use client";
 
-import LoadingPage from "@/components/share/loading";
+import LoadingPage from "@/components/share/Loading";
 import Navigation from "@/components/share/Navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";

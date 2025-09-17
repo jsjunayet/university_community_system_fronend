@@ -8,6 +8,7 @@ import {
   Calendar,
   GraduationCap,
   Heart,
+  Key,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -18,6 +19,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import ChangePasswordModal from "./ChangePasswordModel";
 
 const Navigation = () => {
   const { user, logout } = useAuth();
@@ -35,7 +37,7 @@ const Navigation = () => {
       ? [{ path: "/admin", label: "Admin Panel", icon: Users }]
       : []),
   ];
-
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const isActive = (path: string) => pathname === path;
 
   return (
@@ -84,6 +86,23 @@ const Navigation = () => {
                   {user?.role}
                 </p>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setPasswordModalOpen(true)}
+                className="relative flex-shrink-0 w-9 h-9 group"
+              >
+                <Key className="w-5 h-5 text-gray-600 cursor-pointer" />
+
+                {/* Tooltip shown on hover */}
+                <span
+                  className="absolute -bottom-10 mb-2 left-1/2 -translate-x-1/2 
+        bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 
+        transition-opacity whitespace-nowrap z-50"
+                >
+                  Change Password
+                </span>
+              </Button>
               <Button variant="ghost" size="icon" onClick={logout}>
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -133,6 +152,23 @@ const Navigation = () => {
                     {user?.role}
                   </p>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setPasswordModalOpen(true)}
+                  className="relative flex-shrink-0 w-9 h-9 group"
+                >
+                  <Key className="w-5 h-5 text-gray-600 cursor-pointer" />
+
+                  {/* Tooltip shown on hover */}
+                  <span
+                    className="absolute bottom-0 mb-2 left-1/2 -translate-x-1/2 
+        bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 
+        transition-opacity whitespace-nowrap z-50"
+                  >
+                    Change Password
+                  </span>
+                </Button>
                 <Button variant="ghost" size="icon" onClick={logout}>
                   <LogOut className="w-4 h-4" />
                 </Button>
@@ -141,6 +177,10 @@ const Navigation = () => {
           </div>
         )}
       </div>
+      <ChangePasswordModal
+        open={passwordModalOpen}
+        onOpenChange={setPasswordModalOpen}
+      />
     </nav>
   );
 };

@@ -17,10 +17,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  CreateJobPost,
+  getAllUserJobPost,
+  getOwnJobPost,
+} from "@/services/jobPoralService";
+import {
+  CreateTourJobPostJoin,
+  getMyJobPostJoin,
+} from "@/services/jopPortalJoinService";
 import { JobApplication } from "@/types";
+import { format } from "date-fns";
 import {
   Building,
   Calendar,
@@ -32,8 +43,43 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { JobApplicationModal } from "../JobApplication/JobApplicationModal";
+
+// Job Card Skeleton component for loading state
+const JobCardSkeleton = () => (
+  <Card className="hover:shadow-md transition-shadow">
+    <CardHeader>
+      <div className="flex justify-between items-start">
+        <div>
+          <Skeleton className="h-6 w-48 mb-2" />
+          <div className="flex items-center gap-4 mt-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+        </div>
+        <Skeleton className="h-5 w-16" />
+      </div>
+    </CardHeader>
+    <CardContent>
+      <Skeleton className="h-4 w-full mb-2" />
+      <Skeleton className="h-4 w-5/6 mb-2" />
+      <Skeleton className="h-4 w-4/6 mb-4" />
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+      <div className="flex justify-between items-center">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-9 w-24" />
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const Jobs = () => {
   const { user } = useAuth();
@@ -42,6 +88,8 @@ const Jobs = () => {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [selectedJobForApplication, setSelectedJobForApplication] =
     useState<JobApplication | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Mock job applications
   const mockJobs: JobApplication[] = [
@@ -94,7 +142,75 @@ const Jobs = () => {
     requirements: "",
     deadline: "",
   });
+  const [Blood, setBlood] = useState([]);
+  const [Avaiableblood, setAvaiableblood] = useState([]);
+  const [myBlood, setMyblood] = useState([]);
+  console.log(Avaiableblood, Blood);
+  const fetchMyblood = async () => {
+    try {
+      setIsLoading(true);
+      const res = await getOwnJobPost();
+      if (res.success) {
+        setBlood(res.data);
+      } else {
+        toast.error("Failed to fetch your job posts");
+      }
+    } catch (error) {
+      console.error("Error fetching own job posts:", error);
+      toast.error("An error occurred while fetching your job posts");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  const fetchAllBlood = async () => {
+    try {
+      setIsLoading(true);
+      const res = await getAllUserJobPost();
+      if (res.success) {
+        setAvaiableblood(res.data);
+      } else {
+        toast.error("Failed to fetch job posts");
+      }
+    } catch (error) {
+      console.error("Error fetching all job posts:", error);
+      toast.error("An error occurred while fetching job posts");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchOwn = async () => {
+    try {
+      setIsLoading(true);
+      const res = await getMyJobPostJoin();
+      if (res.success) {
+        setMyblood(res.data);
+      } else {
+        toast.error("Failed to fetch your job applications");
+      }
+    } catch (error) {
+      console.error("Error fetching job applications:", error);
+      toast.error("An error occurred while fetching your job applications");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([fetchMyblood(), fetchAllBlood(), fetchOwn()]);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -102,7 +218,7 @@ const Jobs = () => {
     setJobData({ ...jobData, [id]: value });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Format deadline to ISO string
     const formattedDeadline = jobData.deadline
       ? new Date(jobData.deadline).toISOString()
@@ -111,10 +227,17 @@ const Jobs = () => {
     const payload = {
       ...jobData,
       deadline: formattedDeadline,
-      authorId: "USER_ID_1", // Replace dynamically with logged-in user ID
     };
 
-    console.log("Final Payload:", payload);
+    const res = await CreateJobPost(payload);
+    if (res.success) {
+      toast.success(`${res.message}`);
+      fetchMyblood();
+      fetchAllBlood();
+      console.log(res);
+    } else {
+      toast.error(`${res.message}`);
+    }
 
     // TODO: Send to backend with fetch/axios
     // await fetch("/api/jobs", { method: "POST", body: JSON.stringify(payload) });
@@ -124,25 +247,15 @@ const Jobs = () => {
     setIsApplicationModalOpen(true);
   };
 
-  const handleApplicationSubmit = (applicationData: any) => {
-    const newApplication = {
-      id: Date.now().toString(),
-      ...applicationData,
-      userId: user?.id,
-      status: "PENDING",
-      createdAt: new Date(),
-    };
-
-    // Update the job with the new application
-    setJobs((jobs) =>
-      jobs.map((job) =>
-        job.id === applicationData.jobPostId
-          ? { ...job, applications: [...job.applications, newApplication] }
-          : job
-      )
-    );
-
-    setApplications([...applications, newApplication]);
+  const handleApplicationSubmit = async (applicationData: any) => {
+    console.log(applicationData);
+    const res = await CreateTourJobPostJoin(applicationData);
+    console.log(res);
+    if (res.success) {
+      toast.success(`${res.message}`);
+    } else {
+      toast.error(`${res.message}`);
+    }
   };
 
   const handleApproveApplication = (jobId: string, applicationId: string) => {
@@ -177,17 +290,10 @@ const Jobs = () => {
     );
   };
 
-  const filteredJobs = jobs.filter(
+  const filteredJobs = Avaiableblood?.filter(
     (job) =>
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.company.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const userApplications = applications.filter(
-    (app) => app.userId === user?.id
-  );
-  const myPostedJobs = jobs.filter(
-    (job) => job.postedBy === user?.name || job.postedBy === user?.id
   );
 
   return (
@@ -197,8 +303,10 @@ const Jobs = () => {
           <h1 className="text-3xl font-bold text-foreground">Job Portal</h1>
           <p className="text-muted-foreground">Discover career opportunities</p>
         </div>
-        {(user?.role === "alumni" || user?.role === "admin") && (
-          <Dialog>
+        {(user?.role === "alumni" ||
+          user?.role === "admin" ||
+          user?.role == "superAdmin") && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
@@ -257,7 +365,13 @@ const Jobs = () => {
                     onChange={handleChange}
                   />
                 </div>
-                <Button className="w-full" onClick={handleSubmit}>
+                <Button
+                  className="w-full"
+                  onClick={async () => {
+                    await handleSubmit();
+                    setIsDialogOpen(false); // ✅ success হলে modal বন্ধ হবে
+                  }}
+                >
                   Post Job
                 </Button>
               </div>
@@ -267,11 +381,10 @@ const Jobs = () => {
       </div>
 
       <Tabs defaultValue="browse" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="browse">Browse Jobs</TabsTrigger>
           <TabsTrigger value="applications">My Applications</TabsTrigger>
           <TabsTrigger value="manage">Manage Jobs</TabsTrigger>
-          <TabsTrigger value="tracking">Application Tracking</TabsTrigger>
         </TabsList>
 
         <TabsContent value="browse" className="space-y-4">
@@ -288,86 +401,159 @@ const Jobs = () => {
           </div>
 
           <div className="grid gap-4">
-            {filteredJobs.map((job) => (
-              <Card key={job.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Building className="w-5 h-5 text-primary" />
-                        {job.title}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-4 mt-2">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {job.company}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          Posted {job.postedDate.toLocaleDateString()}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {job.applications.length} applicants
-                        </span>
-                      </CardDescription>
-                    </div>
-                    <Badge
-                      variant={job.status === "open" ? "default" : "secondary"}
-                    >
-                      {job.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {job.description}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {job.requirements.map((req, index) => (
-                      <Badge key={index} variant="outline">
-                        {req}
+            {isLoading ? (
+              // Show skeleton loading while data is being fetched
+              Array(3)
+                .fill(0)
+                .map((_, index) => <JobCardSkeleton key={index} />)
+            ) : filteredJobs && filteredJobs.length > 0 ? (
+              filteredJobs.map((job) => (
+                <Card
+                  key={job.id}
+                  className="hover:shadow-md transition-shadow"
+                >
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Building className="w-5 h-5 text-primary" />
+                          {job.title}
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-4 mt-2">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-4 h-4" />
+                            {job.company}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            Posted {job.postedDate}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            {job.applications?.length} applicants
+                          </span>
+                        </CardDescription>
+                      </div>
+                      <Badge
+                        variant={
+                          job.status === "open" ? "default" : "secondary"
+                        }
+                      >
+                        {job.status}
                       </Badge>
-                    ))}
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
-                      Deadline: {job.applicationDeadline.toLocaleDateString()}
-                    </span>
-                    <Button onClick={() => handleApply(job)}>Apply Now</Button>
-                  </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {job.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {job.requirements
+                        ?.split(",") // কমা দিয়ে ভাগ করবো
+                        .map((req, index) => (
+                          <Badge key={index} variant="outline">
+                            {req.trim()}{" "}
+                            {/* trim() দিয়ে অতিরিক্ত স্পেস মুছে ফেলবো */}
+                          </Badge>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        Deadline:{" "}
+                        {job.deadline
+                          ? new Date(job.deadline).toLocaleDateString()
+                          : "N/A"}
+                      </span>
+
+                      <Button onClick={() => handleApply(job)}>
+                        Apply Now
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">No jobs found</p>
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="applications" className="space-y-4">
           <div className="grid gap-4">
-            {userApplications.length > 0 ? (
-              userApplications.map((app) => {
-                const job = jobs.find((j) => j.id === app.jobId);
-                return (
-                  <Card key={app.id}>
+            {isLoading ? (
+              // Show skeleton loading while data is being fetched
+              Array(3)
+                .fill(0)
+                .map((_, index) => (
+                  <Card key={index}>
                     <CardHeader>
-                      <CardTitle>{job?.title}</CardTitle>
-                      <CardDescription>{job?.company}</CardDescription>
+                      <Skeleton className="h-6 w-48 mb-2" />
+                      <Skeleton className="h-4 w-32" />
                     </CardHeader>
                     <CardContent>
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="text-sm">
-                            Applied: {app.appliedDate.toLocaleDateString()}
+                          <Skeleton className="h-4 w-32 mb-2" />
+                          <Skeleton className="h-4 w-40 mb-2" />
+                          <Skeleton className="h-5 w-20" />
+                        </div>
+                        <div className="flex gap-2">
+                          <Skeleton className="h-9 w-24" />
+                          <Skeleton className="h-9 w-24" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+            ) : myBlood.length > 0 ? (
+              myBlood.map((job) => {
+                return (
+                  <Card key={job.id}>
+                    <CardHeader>
+                      <CardTitle>{job.jobPost.title}</CardTitle>
+                      <CardDescription>{job.jobPost?.company}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm text-green-600">
+                            Applied:{" "}
+                            {format(new Date(job.createdAt), "dd MMM yyyy")}
                           </p>
+                          <p className="text-sm">
+                            Job Deadline:{" "}
+                            {format(
+                              new Date(job.jobPost.deadline),
+                              "dd MMM yyyy"
+                            )}
+                          </p>
+
                           <Badge
                             variant={
-                              app.status === "pending" ? "secondary" : "default"
+                              job.status === "pending" ? "secondary" : "default"
                             }
                           >
-                            {app.status}
+                            {job.status}
                           </Badge>
                         </div>
-                        <Button variant="outline">View Details</Button>
+
+                        <div className="flex gap-2">
+                          <Button variant="outline">View Details</Button>
+                          {job.resume && (
+                            <a
+                              href={job.resume}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button variant="secondary">View Resume</Button>
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -384,13 +570,56 @@ const Jobs = () => {
         </TabsContent>
 
         <TabsContent value="manage" className="space-y-4">
-          {user?.role === "alumni" || user?.role === "admin" ? (
+          {user?.role === "alumni" ||
+          user?.role === "admin" ||
+          user?.role === "superAdmin" ? (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold">Manage Posted Jobs</h2>
 
-              {myPostedJobs.length > 0 ? (
+              {isLoading ? (
+                // Show skeleton loading while data is being fetched
                 <div className="grid gap-4">
-                  {myPostedJobs.map((job) => (
+                  {Array(3)
+                    .fill(0)
+                    .map((_, index) => (
+                      <Card key={index}>
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <Skeleton className="h-6 w-48 mb-2" />
+                              <Skeleton className="h-4 w-32" />
+                            </div>
+                            <Skeleton className="h-5 w-16" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                              <Skeleton className="h-4 w-40" />
+                            </div>
+                            <div className="space-y-3">
+                              <Skeleton className="h-5 w-24" />
+                              <div className="flex items-center justify-between p-3 border rounded-lg">
+                                <div className="flex-1">
+                                  <Skeleton className="h-4 w-32 mb-1" />
+                                  <Skeleton className="h-3 w-24 mb-1" />
+                                  <Skeleton className="h-5 w-20" />
+                                </div>
+                                <div className="flex gap-2">
+                                  <Skeleton className="h-8 w-8" />
+                                  <Skeleton className="h-8 w-8" />
+                                  <Skeleton className="h-8 w-8" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              ) : Blood.length > 0 ? (
+                <div className="grid gap-4">
+                  {Blood.map((job) => (
                     <Card key={job.id}>
                       <CardHeader>
                         <div className="flex justify-between items-start">
@@ -411,14 +640,12 @@ const Jobs = () => {
                         <div className="space-y-4">
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">
-                              {job.applications.length} applications received
+                              {job?.applications?.length || 0} applications
+                              received
                             </span>
-                            <Button variant="outline" size="sm">
-                              Edit Job
-                            </Button>
                           </div>
 
-                          {job.applications.length > 0 && (
+                          {job.applications?.length > 0 && (
                             <div className="space-y-3">
                               <h4 className="font-medium">Applications:</h4>
                               {job.applications.map((app) => (
@@ -510,68 +737,6 @@ const Jobs = () => {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
-
-        <TabsContent value="tracking" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Application Status Tracking</CardTitle>
-              <CardDescription>Track your application progress</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {userApplications.map((app) => {
-                  const job = jobs.find((j) => j.id === app.jobId);
-                  return (
-                    <div key={app.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-medium">{job?.title}</h4>
-                        <Badge>{app.status}</Badge>
-                      </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>{job?.company}</span>
-                        <span>
-                          Applied: {app.appliedDate.toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex space-x-2">
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            app.status === "pending"
-                              ? "bg-yellow-500"
-                              : "bg-green-500"
-                          }`}
-                        ></div>
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            ["reviewing", "shortlisted", "hired"].includes(
-                              app.status
-                            )
-                              ? "bg-green-500"
-                              : "bg-gray-300"
-                          }`}
-                        ></div>
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            ["shortlisted", "hired"].includes(app.status)
-                              ? "bg-green-500"
-                              : "bg-gray-300"
-                          }`}
-                        ></div>
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            app.status === "hired"
-                              ? "bg-green-500"
-                              : "bg-gray-300"
-                          }`}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 

@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -35,26 +36,63 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DeletedUser, getAlluser, SignUpUser } from "@/services/authSeverice";
 import { ApprovedEvent, getEventForAdmin } from "@/services/eventService";
+import {
+  ApprovedJobPost,
+  getAllAdminJobPost,
+} from "@/services/jobPoralService";
+import { getAllPostForAdmin, postAprroved } from "@/services/postService";
+import {
+  ApprovedTourGroup,
+  getAllAdminTourGroup,
+} from "@/services/tourService";
 import { BloodDonation, Event, User } from "@/types";
 import {
   AlertTriangle,
+  Bookmark,
   Calendar,
   CheckCircle,
-  Heart,
   Search,
   Trash2,
+  User2,
   Users,
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+// Skeleton components for loading states
+const StatCardSkeleton = () => (
+  <Card>
+    <CardHeader className="pb-2">
+      <Skeleton className="h-4 w-1/3" />
+    </CardHeader>
+    <CardContent>
+      <Skeleton className="h-10 w-16 mb-2" />
+      <Skeleton className="h-4 w-2/3" />
+    </CardContent>
+  </Card>
+);
+
+const TableRowSkeleton = () => (
+  <TableRow>
+    {Array(5)
+      .fill(0)
+      .map((_, index) => (
+        <TableCell key={index}>
+          <Skeleton className="h-6 w-full" />
+        </TableCell>
+      ))}
+  </TableRow>
+);
+
 const Admin = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setisLoading] = useState(false);
-  const [isEventLoading, setIsEventLoading] = useState(false);
+  const [isLoading, setisLoading] = useState(true);
+  const [isEventLoading, setIsEventLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [adminEvents, setAdminEvents] = useState<any[]>([]);
+  const [jobs, setJobs] = useState([]);
+  const [tours, setTours] = useState([]);
 
   // Mock data
   const [formData, setFormData] = useState({
@@ -65,31 +103,7 @@ const Admin = () => {
     studentId: "", // 👈 নতুন ফিল্ড
     password: "",
   });
-
-  const mockUsers: User[] = [
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john@university.edu",
-      role: "student",
-      department: "Computer Science",
-      graduationYear: 2025,
-      bloodGroup: "A+",
-      phone: "+1234567890",
-      verified: true,
-    },
-    {
-      id: "2",
-      name: "Sarah Wilson",
-      email: "sarah@university.edu",
-      role: "alumni",
-      department: "Business Administration",
-      graduationYear: 2020,
-      bloodGroup: "O-",
-      phone: "+1234567891",
-      verified: true,
-    },
-  ];
+  const [posts, setPosts] = useState([]);
 
   const formatbloodGroup = (type: string) => {
     const map: Record<string, string> = {
@@ -104,35 +118,6 @@ const Admin = () => {
     };
     return map[type] || type;
   };
-
-  const mockEvents: Event[] = [
-    {
-      id: "1",
-      title: "Alumni Networking Event",
-      description: "Connect with alumni professionals",
-      date: new Date("2024-02-15"),
-      location: "Main Auditorium",
-      maxParticipants: 100,
-      currentParticipants: 45,
-      organizer: "Admin",
-      category: "professional",
-      status: "upcoming",
-      participants: ["1", "2"],
-      rsvps: [],
-    },
-  ];
-
-  const mockBloodDonations: BloodDonation[] = [
-    {
-      id: "1",
-      donorId: "1",
-      bloodGroup: "A+",
-      donationDate: new Date(),
-      location: "Medical Center",
-      status: "pending",
-      emergencyRequest: false,
-    },
-  ];
 
   // State to control dialog open/close
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -171,14 +156,17 @@ const Admin = () => {
     }
   };
 
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [events] = useState<Event[]>(mockEvents);
-  const [bloodDonations] = useState<BloodDonation[]>(mockBloodDonations);
+  const [users, setUsers] = useState<User[]>();
+  const [events] = useState<Event[]>();
+  const [bloodDonations] = useState<BloodDonation[]>();
 
   // Fetch users and events when component mounts
   useEffect(() => {
     fetchUsers();
     fetchEvents();
+    fetchPost();
+    fetchTours();
+    fetchJob();
   }, []);
 
   const handleDeleteUser = async (id: string) => {
@@ -196,13 +184,52 @@ const Admin = () => {
   };
 
   const fetchUsers = async () => {
-    const res = await getAlluser();
-    console.log(res);
-    if (res.success) {
-      setUsers(res.data);
+    try {
+      setisLoading(true);
+      const res = await getAlluser();
+      console.log(res);
+      if (res.success) {
+        setUsers(res.data);
+      } else {
+        toast.error(res.message || "Failed to fetch users");
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error("An error occurred while fetching users");
+    } finally {
+      setisLoading(false);
     }
   };
-
+  const fetchTours = async () => {
+    try {
+      setisLoading(true);
+      const res = await getAllAdminTourGroup();
+      console.log(res);
+      if (res.success) {
+        setTours(res.data);
+      } else {
+        toast.error(res.message || "Failed to fetch tours");
+      }
+    } catch (error) {
+      console.error("Error fetching tours:", error);
+      toast.error("An error occurred while fetching tours");
+    } finally {
+      setisLoading(false);
+    }
+  };
+  const fetchJob = async () => {
+    const res = await getAllAdminJobPost();
+    console.log(res);
+    if (res.success) {
+      setJobs(res.data);
+    }
+  };
+  const fetchPost = async () => {
+    const res = await getAllPostForAdmin();
+    if (res.success) {
+      setPosts(res.data);
+    }
+  };
   // Fetch events for admin
   const fetchEvents = async () => {
     try {
@@ -227,7 +254,6 @@ const Admin = () => {
       setIsActionLoading(true);
       const response = await ApprovedEvent(eventId, status);
       if (response.success) {
-        toast.success("Event approved successfully");
         fetchEvents(); // Refresh events list
       } else {
         toast.error(response.message || "Failed to approve event");
@@ -239,14 +265,63 @@ const Admin = () => {
       setIsActionLoading(false);
     }
   };
-
-  const stats = {
-    totalUsers: users.length,
-    totalEvents: events.length,
-    pendingEvents: adminEvents.filter((e) => e.status === "pending").length,
-    totalBloodDonations: bloodDonations.length,
+  const handleApprovePost = async (eventId: string, status: string) => {
+    try {
+      setIsActionLoading(true);
+      const response = await postAprroved(eventId, status);
+      if (response.success) {
+        toast.success(`${response.message}`);
+        fetchPost(); // Refresh events list
+      } else {
+        toast.error(response.message || "Failed to approve event");
+      }
+    } catch (error) {
+      console.error("Error approving event:", error);
+      toast.error("An error occurred while approving the event");
+    } finally {
+      setIsActionLoading(false);
+    }
   };
-
+  const stats = {
+    totalUsers: users?.length,
+    pendingEvents: adminEvents.filter((e) => e.status === "pending").length,
+    pendingTour: tours.filter((e) => e.status === "pending").length,
+    pendingJobPortal: jobs.filter((e) => e.status === "pending").length,
+    pendingPost: posts.filter((e) => e.status === "pending").length,
+  };
+  const handleApproveTour = async (eventId: string, status: string) => {
+    try {
+      setIsActionLoading(true);
+      const response = await ApprovedTourGroup(eventId, status);
+      if (response.success) {
+        fetchEvents(); // Refresh events list
+      } else {
+        toast.error(response.message || "Failed to approve Tour");
+      }
+    } catch (error) {
+      console.error("Error approving Tour:", error);
+      toast.error("An error occurred while approving the Tour");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+  const handleApproveJobPoral = async (eventId: string, status: string) => {
+    try {
+      setIsActionLoading(true);
+      const response = await ApprovedJobPost(eventId, status);
+      if (response.success) {
+        fetchEvents(); // Refresh events list
+      } else {
+        toast.error(response.message || "Failed to approve Job");
+      }
+    } catch (error) {
+      console.error("Error approving Job:", error);
+      toast.error("An error occurred while approving the Job");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+  console.log(tours);
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -370,7 +445,7 @@ const Admin = () => {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -382,17 +457,7 @@ const Admin = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
-              <div className="text-2xl font-bold">{stats.totalEvents}</div>
-            </div>
-          </CardContent>
-        </Card>
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
@@ -408,30 +473,50 @@ const Admin = () => {
         </Card>
         <Card>
           <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Pending Tour</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+              <div className="text-2xl font-bold">{stats.pendingTour}</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Blood Donations
+              Pending Job Posts
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <Heart className="w-4 h-4 mr-2 text-muted-foreground" />
-              <div className="text-2xl font-bold">
-                {stats.totalBloodDonations}
-              </div>
+              <Bookmark className="w-4 h-4 mr-2 text-muted-foreground" />
+              <div className="text-2xl font-bold">{stats.pendingJobPortal}</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pending Cummunity Posts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <User2 className="w-4 h-4 mr-2 text-muted-foreground" />
+              <div className="text-2xl font-bold">{stats.pendingPost}</div>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="users">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="tours">Tours</TabsTrigger>
-          <TabsTrigger value="groups">Groups</TabsTrigger>
           <TabsTrigger value="jobs">Job Portal</TabsTrigger>
           <TabsTrigger value="community">Community</TabsTrigger>
-          <TabsTrigger value="donations">Donations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
@@ -466,47 +551,52 @@ const Admin = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users
-                    .filter(
-                      (user) =>
-                        user.name
-                          .toLowerCase()
-                          .includes(searchTerm.toLowerCase()) ||
-                        user.email
-                          .toLowerCase()
-                          .includes(searchTerm.toLowerCase())
-                    )
-                    .map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">
-                          {user.name}
-                        </TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              user.role === "admin"
-                                ? "destructive"
-                                : user.role === "faculty"
-                                ? "outline"
-                                : "default"
-                            }
-                          >
-                            {user.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{user.bloodGroup}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                  {isLoading
+                    ? // Show skeleton loading while fetching data
+                      Array(5)
+                        .fill(0)
+                        .map((_, index) => <TableRowSkeleton key={index} />)
+                    : users
+                        .filter(
+                          (user) =>
+                            user.name
+                              .toLowerCase()
+                              .includes(searchTerm.toLowerCase()) ||
+                            user.email
+                              .toLowerCase()
+                              .includes(searchTerm.toLowerCase())
+                        )
+                        .map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">
+                              {user.name}
+                            </TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  user.role === "admin"
+                                    ? "destructive"
+                                    : user.role === "faculty"
+                                    ? "outline"
+                                    : "default"
+                                }
+                              >
+                                {user.role}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{user.bloodGroup}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteUser(user.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -535,7 +625,25 @@ const Admin = () => {
             </CardHeader>
             <CardContent>
               {isEventLoading ? (
-                <div className="text-center py-4">Loading events...</div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Organizer</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array(4)
+                      .fill(0)
+                      .map((_, index) => (
+                        <TableRowSkeleton key={index} />
+                      ))}
+                  </TableBody>
+                </Table>
               ) : adminEvents.length === 0 ? (
                 <div className="text-center py-4">No events found</div>
               ) : (
@@ -616,7 +724,7 @@ const Admin = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        {/* <TabsContent value="tours" className="space-y-4">
+        <TabsContent value="tours" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Tour Management</CardTitle>
@@ -635,147 +743,69 @@ const Admin = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tours.map((tour) => (
-                    <TableRow key={tour.id}>
-                      <TableCell>{tour.title}</TableCell>
-                      <TableCell>{tour.author?.name}</TableCell>
-                      <TableCell>{tour.difficulty}</TableCell>
-                      <TableCell>৳{tour.price}</TableCell>
-                      <TableCell>
-                        {new Date(tour.deadline).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            event.status === "approved"
-                              ? "success"
-                              : event.status === "rejected"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
-                          {event.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          {event.status === "pending" && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() =>
-                                  handleApproveEvent(event.id, "approved")
-                                }
-                                disabled={isActionLoading}
-                              >
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() =>
-                                  handleApproveEvent(event.id, "rejected")
-                                }
-                                disabled={isActionLoading}
-                              >
-                                <XCircle className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {isLoading
+                    ? // Show skeleton loading while fetching data
+                      Array(4)
+                        .fill(0)
+                        .map((_, index) => <TableRowSkeleton key={index} />)
+                    : tours.map((tour) => (
+                        <TableRow key={tour.id}>
+                          <TableCell>{tour.title}</TableCell>
+                          <TableCell>{tour.author?.name}</TableCell>
+                          <TableCell>{tour.difficulty}</TableCell>
+                          <TableCell>৳{tour.price}</TableCell>
+                          <TableCell>
+                            {new Date(tour.deadline).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                tour.status === "approved"
+                                  ? "success"
+                                  : tour.status === "rejected"
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                            >
+                              {tour.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              {tour.status === "pending" && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() =>
+                                      handleApproveTour(tour.id, "approved")
+                                    }
+                                    disabled={isActionLoading}
+                                  >
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() =>
+                                      handleApproveTour(tour.id, "rejected")
+                                    }
+                                    disabled={isActionLoading}
+                                  >
+                                    <XCircle className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="donations" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Blood Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Blood Type</TableHead>
-                    <TableHead>Units</TableHead>
-                    <TableHead>Urgency</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bloodRequests.map((req) => (
-                    <TableRow key={req.id}>
-                      <TableCell>{req.bloodType}</TableCell>
-                      <TableCell>{req.unitsNeeded}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            req.urgencyLevel === "HIGH"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
-                          {req.urgencyLevel}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{req.location}</TableCell>
-                      <TableCell>{req.contactPhone}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            event.status === "approved"
-                              ? "success"
-                              : event.status === "rejected"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
-                          {event.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          {event.status === "pending" && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() =>
-                                  handleApproveEvent(event.id, "approved")
-                                }
-                                disabled={isActionLoading}
-                              >
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() =>
-                                  handleApproveEvent(event.id, "rejected")
-                                }
-                                disabled={isActionLoading}
-                              >
-                                <XCircle className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+
         <TabsContent value="community" className="space-y-4">
           <Card>
             <CardHeader>
@@ -801,25 +831,25 @@ const Admin = () => {
                       <TableCell>
                         <Badge
                           variant={
-                            event.status === "approved"
+                            post?.status === "approved"
                               ? "success"
-                              : event.status === "rejected"
+                              : post?.status === "rejected"
                               ? "destructive"
                               : "secondary"
                           }
                         >
-                          {event.status}
+                          {post?.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          {event.status === "pending" && (
+                          {post?.status === "pending" && (
                             <>
                               <Button
                                 variant="outline"
                                 size="icon"
                                 onClick={() =>
-                                  handleApproveEvent(event.id, "approved")
+                                  handleApprovePost(post.id, "approved")
                                 }
                                 disabled={isActionLoading}
                               >
@@ -829,7 +859,7 @@ const Admin = () => {
                                 variant="outline"
                                 size="icon"
                                 onClick={() =>
-                                  handleApproveEvent(event.id, "rejected")
+                                  handleApprovePost(post.id, "rejected")
                                 }
                                 disabled={isActionLoading}
                               >
@@ -875,25 +905,25 @@ const Admin = () => {
                       <TableCell>
                         <Badge
                           variant={
-                            event.status === "approved"
+                            job.status === "approved"
                               ? "success"
-                              : event.status === "rejected"
+                              : job.status === "rejected"
                               ? "destructive"
                               : "secondary"
                           }
                         >
-                          {event.status}
+                          {job.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          {event.status === "pending" && (
+                          {job.status === "pending" && (
                             <>
                               <Button
                                 variant="outline"
                                 size="icon"
                                 onClick={() =>
-                                  handleApproveEvent(event.id, "approved")
+                                  handleApproveJobPoral(job.id, "approved")
                                 }
                                 disabled={isActionLoading}
                               >
@@ -903,7 +933,7 @@ const Admin = () => {
                                 variant="outline"
                                 size="icon"
                                 onClick={() =>
-                                  handleApproveEvent(event.id, "rejected")
+                                  handleApproveJobPoral(job.id, "rejected")
                                 }
                                 disabled={isActionLoading}
                               >
@@ -919,7 +949,7 @@ const Admin = () => {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent> */}
+        </TabsContent>
       </Tabs>
     </div>
   );

@@ -24,6 +24,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -74,10 +75,58 @@ interface Event {
   currentParticipants?: number; // Calculated field
 }
 
+// Skeleton component for event cards
+const EventCardSkeleton = () => {
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-2">
+        <Skeleton className="h-6 w-3/4 mb-2" />
+        <Skeleton className="h-4 w-1/2" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <div className="flex items-center gap-2 mt-4">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <div className="flex gap-2 mt-2">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Skeleton for event details
+const EventDetailsSkeleton = () => {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-3/4" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Skeleton className="h-32 w-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-3/4" />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-24" />
+        <Skeleton className="h-10 w-24" />
+      </div>
+    </div>
+  );
+};
+
 const Events = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("browse");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Set to true initially to show skeletons
   const [isEventLoading, setIsEventLoading] = useState(false);
   const [isJoinLoading, setIsJoinLoading] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
@@ -340,11 +389,22 @@ const Events = () => {
 
   // Fetch events on component mount
   useEffect(() => {
-    fetchEvents();
-    if (user) {
-      fetchMyEvents();
-      fetchMyJoinedEvents();
-    }
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          fetchEvents(),
+          user ? fetchMyEvents() : Promise.resolve(),
+          user ? fetchMyJoinedEvents() : Promise.resolve()
+        ]);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
   }, [user]);
 
   // Get user's join status for an event
@@ -400,7 +460,11 @@ const Events = () => {
           </div>
 
           {isLoading ? (
-            <div className="text-center py-8">Loading events...</div>
+            <div className="grid gap-6">
+              {Array(3).fill(0).map((_, index) => (
+                <EventCardSkeleton key={index} />
+              ))}
+            </div>
           ) : events.length === 0 ? (
             <div className="text-center py-8">No events found</div>
           ) : (
@@ -518,77 +582,28 @@ const Events = () => {
 
         {/* My Events Tab */}
         <TabsContent value="my-events" className="space-y-6">
-          {/* <h2 className="text-xl font-semibold">My Events</h2> */}
-
-          {/* {!user ? (
-            <div className="text-center py-8">
-              Please login to view your events
-            </div>
-          ) : myEvents.length === 0 ? (
-            <div className="text-center py-8">
-              You haven't created any events yet
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {myEvents.map((event) => (
-                <Card key={event.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-accent rounded-lg flex items-center justify-center">
-                          <Calendar className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">{event.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(event.date).toLocaleDateString()} at{" "}
-                            {event.time}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge
-                              variant={
-                                event.status === "approved"
-                                  ? "success"
-                                  : "secondary"
-                              }
-                            >
-                              {event.status}
-                            </Badge>
-                            <Badge variant="outline">Organizer</Badge>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          View Details
-                        </Button>
-                        <Button variant="university" size="sm">
-                          Manage Event
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )} */}
-
           <h2 className="text-xl font-semibold mt-8">Events I've Joined</h2>
 
           {!user ? (
             <div className="text-center py-8">
               Please login to view joined events
             </div>
+          ) : isLoading ? (
+            <div className="grid gap-4">
+              {Array(3).fill(0).map((_, index) => (
+                <EventCardSkeleton key={index} />
+              ))}
+            </div>
           ) : myJoinedEvents.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-center">
                 <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Events Join</h3>
+                <h3 className="text-lg font-semibold mb-2">No Events Joined</h3>
                 <p className="text-muted-foreground mb-4">
                   You haven't joined any events yet
                 </p>
                 <Button variant="hero" onClick={() => setActiveTab("browse")}>
-                  Visit Browse
+                  Browse Events
                 </Button>
               </CardContent>
             </Card>
@@ -617,11 +632,11 @@ const Events = () => {
                               {joinedEvent.status}
                             </Badge>
                             <Badge variant="outline">Participant</Badge>
-                            {joinedEvent.status === "ACCEPTED" && (
+                            {joinedEvent.status === "APPROVED" && (
                               <Link
                                 href={joinedEvent.meetLink}
                                 target="_blank"
-                                className="text-blue-600 hover:text-blue-800 underline font-medium transition-colors"
+                                className="text-xs text-blue-500 hover:underline"
                               >
                                 Join Meeting
                               </Link>
@@ -630,7 +645,10 @@ const Events = () => {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => {
+                          setSelectedEvent(joinedEvent.event);
+                          setShowEventDetails(true);
+                        }}>
                           View Details
                         </Button>
                         {joinedEvent.status === "APPROVED" &&

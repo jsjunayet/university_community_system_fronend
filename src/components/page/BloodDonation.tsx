@@ -4,159 +4,191 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+
+import { messaging } from "@/lib/firebase";
+import {
+  ApprovedOrRejectedStatusBloodDonationJoin,
+  CreateTourBloodDonationJoin,
+  getMyBloodDonationJoin,
+} from "@/services/BloodJoinService";
+import {
+  CreateBloodRequest,
+  getAllUserBloodRequest,
+  getOwnBloodRequest,
+} from "@/services/bloodService";
+import { onMessage } from "firebase/messaging";
 import { Calendar, Droplet, Heart, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { BloodRequestCard } from "../BloodRequestCard/BloodRequestCard";
+
+// Blood Request Card Skeleton component for loading states
+const BloodRequestCardSkeleton = () => {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <Skeleton className="w-12 h-12 rounded-lg" />
+          <div className="space-y-2 flex-1">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-5 w-16" />
+            </div>
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-48" />
+            <div className="flex gap-2 mt-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
+          <div className="text-right">
+            <Skeleton className="h-4 w-24 ml-auto" />
+            <div className="mt-4 flex justify-end gap-2">
+              <Skeleton className="h-9 w-20" />
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const BloodDonation = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("requests");
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - matches backend schema
-  const bloodRequests = [
-    {
-      id: "1",
-      bloodType: "O-",
-      location: "City General Hospital, Downtown Campus",
-      date: "2024-02-15T14:00:00Z",
-      notes: "Urgent need for surgery patient. Critical condition.",
-      status: "approved" as const,
-      requester: {
-        id: "req1",
-        name: "Dr. Sarah Johnson",
-        email: "sarah.johnson@hospital.com",
-        phone: "+1-555-0123",
-      },
-      donations: [
-        {
-          id: "don1",
-          donorId: "donor1",
-          donor: { name: "John Smith", email: "john@email.com" },
-          status: "PENDING" as const,
-          donatedAt: undefined,
-        },
-        {
-          id: "don2",
-          donorId: "donor2",
-          donor: { name: "Jane Doe", email: "jane@email.com" },
-          status: "ACCEPTED" as const,
-          donatedAt: "2024-02-14T10:00:00Z",
-        },
-      ],
-      urgency: "critical" as const,
-      unitsNeeded: 5,
-    },
-    {
-      id: "2",
-      bloodType: "A+",
-      location: "University Medical Center, Medical District",
-      date: "2024-02-20T09:00:00Z",
-      notes: "Multiple patients requiring blood transfusion.",
-      status: "approved" as const,
-      requester: {
-        id: "req2",
-        name: "Nurse Mike Wilson",
-        email: "mike.wilson@umc.com",
-        phone: "+1-555-0124",
-      },
-      donations: [],
-      urgency: "high" as const,
-      unitsNeeded: 3,
-    },
-    {
-      id: "3",
-      bloodType: "B+",
-      location: "Regional Blood Bank, Central Campus",
-      date: "2024-02-25T11:00:00Z",
-      notes: "Restocking blood bank reserves.",
-      status: "approved" as const,
-      requester: {
-        id: "req3",
-        name: "Dr. Emily Chen",
-        email: "emily.chen@bloodbank.org",
-        phone: "+1-555-0125",
-      },
-      donations: [
-        {
-          id: "don3",
-          donorId: "donor3",
-          donor: { name: "Bob Wilson", email: "bob@email.com" },
-          status: "PENDING" as const,
-          donatedAt: undefined,
-        },
-      ],
-      urgency: "medium" as const,
-      unitsNeeded: 8,
-    },
-  ];
+  // Define proper interfaces for the data types
+  interface BloodRequest {
+    id: string;
+    bloodType: string;
+    unitsNeeded: number;
+    urgencyLevel: string;
+    location: string;
+    date: string;
+    notes?: string;
+    contactPhone: string;
+  }
 
-  const myBloodRequests = [
-    {
-      id: "4",
-      bloodType: "A+",
-      location: "University Health Center",
-      date: "2024-01-20T16:00:00Z",
-      notes: "Need blood for scheduled surgery.",
-      status: "approved" as const,
-      requester: {
-        id: user?.id || "current-user",
-        name: user?.name || "Current User",
-        email: user?.email || "user@email.com",
-        phone: user?.phone,
-      },
-      donations: [
-        {
-          id: "don4",
-          donorId: "donor4",
-          donor: { name: "Alice Brown", email: "alice@email.com" },
-          status: "PENDING" as const,
-          donatedAt: undefined,
-        },
-        {
-          id: "don5",
-          donorId: "donor5",
-          donor: { name: "Charlie Davis", email: "charlie@email.com" },
-          status: "ACCEPTED" as const,
-          donatedAt: "2024-01-18T14:00:00Z",
-        },
-      ],
-      urgency: "medium" as const,
-      unitsNeeded: 2,
-    },
-  ];
+  interface BloodDonation {
+    id: string;
+    status: string;
+    request: BloodRequest;
+  }
 
-  const myDonations = [
-    {
-      id: "1",
-      date: "2024-01-10",
-      location: "University Health Center",
-      bloodType: user?.bloodType || "A+",
-      status: "completed",
-      recipient: "Emergency Patient",
-    },
-    {
-      id: "2",
-      date: "2023-12-15",
-      location: "City Blood Bank",
-      bloodType: user?.bloodType || "A+",
-      status: "completed",
-      recipient: "Blood Bank Reserve",
-    },
-    {
-      id: "3",
-      date: "2024-01-20",
-      location: "Campus Medical Center",
-      bloodType: user?.bloodType || "A+",
-      status: "scheduled",
-      recipient: "Scheduled Donation",
-    },
-  ];
+  const [Blood, setBlood] = useState<BloodRequest[]>([]);
+  const [Avaiableblood, setAvaiableblood] = useState<BloodRequest[]>([]);
+  const [myBlood, setMyblood] = useState<BloodDonation[]>([]);
 
+  const fetchMyblood = async () => {
+    try {
+      const res = await getOwnBloodRequest();
+      if (res.success) {
+        setBlood(res.data);
+      } else {
+        toast.error("Failed to fetch your blood requests");
+      }
+    } catch (error) {
+      toast.error("Error fetching your blood requests");
+      console.error(error);
+    }
+  };
+
+  const fetchAllBlood = async () => {
+    try {
+      const res = await getAllUserBloodRequest();
+      if (res.success) {
+        setAvaiableblood(res.data);
+      } else {
+        toast.error("Failed to fetch blood requests");
+      }
+    } catch (error) {
+      toast.error("Error fetching blood requests");
+      console.error(error);
+    }
+  };
+
+  const fetchOwn = async () => {
+    try {
+      const res = await getMyBloodDonationJoin();
+      if (res.success) {
+        setMyblood(res.data);
+      } else {
+        toast.error("Failed to fetch your donation history");
+      }
+    } catch (error) {
+      toast.error("Error fetching your donation history");
+      console.error(error);
+    }
+  };
+  console.log(Blood, "nn");
+  useEffect(() => {
+    setIsLoading(true);
+    Promise.all([fetchMyblood(), fetchAllBlood(), fetchOwn()]).finally(() => {
+      setIsLoading(false);
+    });
+  }, []);
+  const [formData, setFormData] = useState({
+    bloodType: "",
+    unitsNeeded: 1,
+    urgencyLevel: "low",
+    location: "",
+    date: "",
+    notes: "",
+    contactPhone: "",
+  });
+
+  // Input change handler
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+  };
+
+  // Submit handler
+  const handleCreateBloodRequest = async () => {
+    // Backend model-ready object
+    const requestPayload = {
+      bloodType: formData.bloodType,
+      unitsNeeded: Number(formData.unitsNeeded),
+      urgencyLevel: formData.urgencyLevel.toUpperCase(), // backend expects enum
+      location: formData.location,
+      date: new Date(formData.date), // convert string -> Date
+      notes: formData.notes || null,
+      contactPhone: formData.contactPhone,
+    };
+
+    const res = await CreateBloodRequest(requestPayload);
+    if (res.success) {
+      toast.success(`${res.message}`);
+      fetchMyblood();
+      fetchAllBlood();
+      setActiveTab("my-requests");
+    } else {
+      toast.error(`${res.message}`);
+    }
+    // later => send requestPayload to backend API
+  };
+  // useEffect(() => {
+  //   // Request permission for notifications and listen for messages
+  //   requestForToken();
+
+  //   onMessageListener()
+  //     .then((payload: any) => {
+  //       toast(`${payload.notification.title}`);
+  //     })
+  //     .catch((err) => console.log("failed: ", err));
+  // }, [toast]);
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
       case "critical":
@@ -183,44 +215,43 @@ const BloodDonation = () => {
     }
   };
 
-  const handleDonationRegistration = () => {
-    toast({
-      title: "Registration Successful!",
-      description:
-        "Your blood donation has been scheduled. You'll receive a confirmation email shortly.",
+  useEffect(() => {
+    onMessage(messaging, (payload) => {
+      console.log("Foreground Message:", payload);
+      alert(`${payload.notification?.title}: ${payload.notification?.body}`);
     });
-  };
-
-  const handleBloodRequestAction = (
+  }, []);
+  const handleBloodRequestAction = async (
     requestId: string,
     action: "join" | "approve" | "reject"
   ) => {
-    if (action === "join") {
-      toast({
-        title: "Donation Request Sent",
-        description: "Your donation request has been sent to the requester.",
-      });
-    } else if (action === "approve") {
-      toast({
-        title: "Donation Approved",
-        description:
-          "The donation has been approved. Contact details will be shared.",
-      });
-    } else if (action === "reject") {
-      toast({
-        title: "Donation Rejected",
-        description: "The donation request has been rejected.",
-      });
+    const payload = { requestId: requestId };
+    const res = await CreateTourBloodDonationJoin(payload);
+    console.log(res, "hhh");
+    if (res.success) {
+      toast.success("Sucessfull Join");
+      fetchMyblood();
+    } else {
+      toast.error("Something is Wrong");
     }
   };
+  const handleRequestAction = async (
+    requestId: string,
+    status: "ACCEPTED" | "REJECTED"
+  ) => {
+    const res = await ApprovedOrRejectedStatusBloodDonationJoin(
+      requestId,
+      status
+    );
+    console.log(res);
 
-  const handleCreateBloodRequest = () => {
-    toast({
-      title: "Blood Request Created!",
-      description: "Your blood request has been submitted for approval.",
-    });
+    if (res.success) {
+      toast.success(`${res.message}`);
+      fetchMyblood();
+    } else {
+      toast.error("Something is Wrong");
+    }
   };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -437,10 +468,6 @@ const BloodDonation = () => {
             <h2 className="text-responsive-xl sm:text-xl font-semibold">
               Emergency Blood Requests
             </h2>
-            <Badge variant="destructive" className="animate-pulse text-xs">
-              {bloodRequests.filter((r) => r.urgency === "critical").length}{" "}
-              Critical
-            </Badge>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
@@ -450,7 +477,7 @@ const BloodDonation = () => {
             />
             <select className="p-2 border border-input rounded-md text-responsive sm:text-sm">
               <option value="">All Urgency</option>
-              <option value="critical">Critical</option>
+
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
@@ -458,14 +485,33 @@ const BloodDonation = () => {
           </div>
 
           <div className="grid gap-4 sm:gap-6">
-            {bloodRequests.map((request) => (
-              <BloodRequestCard
-                key={request.id}
-                request={request}
-                userBloodType={user?.bloodType}
-                onRespond={handleBloodRequestAction}
-              />
-            ))}
+            {isLoading ? (
+              // Show skeleton loading while data is being fetched
+              Array(3)
+                .fill(0)
+                .map((_, index) => <BloodRequestCardSkeleton key={index} />)
+            ) : Avaiableblood.length > 0 ? (
+              Avaiableblood.map((request) => (
+                <BloodRequestCard
+                  key={request.id}
+                  request={request}
+                  userBloodType={user?.bloodGroup}
+                  onRespond={handleBloodRequestAction}
+                />
+              ))
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <Droplet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    No Blood Requests
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    There are no blood requests available at the moment.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
@@ -476,17 +522,22 @@ const BloodDonation = () => {
           </h2>
 
           <div className="grid gap-4 sm:gap-6">
-            {myBloodRequests.map((request) => (
-              <BloodRequestCard
-                key={request.id}
-                request={request}
-                userBloodType={user?.bloodType}
-                isOwnRequest={true}
-                onRespond={handleBloodRequestAction}
-              />
-            ))}
-
-            {myBloodRequests.length === 0 && (
+            {isLoading ? (
+              // Show skeleton loading while data is being fetched
+              Array(3)
+                .fill(0)
+                .map((_, index) => <BloodRequestCardSkeleton key={index} />)
+            ) : Blood.length > 0 ? (
+              Blood.map((request) => (
+                <BloodRequestCard
+                  key={request.id}
+                  request={request}
+                  userBloodType={user?.bloodGroup}
+                  isOwnRequest={true}
+                  onRespond={handleRequestAction}
+                />
+              ))
+            ) : (
               <Card>
                 <CardContent className="p-6 text-center">
                   <Droplet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -510,41 +561,82 @@ const BloodDonation = () => {
           <h2 className="text-xl font-semibold">My Donation History</h2>
 
           <div className="grid gap-4">
-            {myDonations.map((donation) => (
-              <Card key={donation.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gradient-secondary rounded-lg flex items-center justify-center">
-                        <Heart className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">
-                            {donation.bloodType} Donation
-                          </h3>
-                          <Badge variant={getStatusColor(donation.status)}>
-                            {donation.status}
-                          </Badge>
+            {isLoading ? (
+              // Show skeleton loading while data is being fetched
+              Array(3)
+                .fill(0)
+                .map((_, index) => (
+                  <Card key={index}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="w-12 h-12 rounded-lg" />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-5 w-32" />
+                              <Skeleton className="h-5 w-20" />
+                            </div>
+                            <Skeleton className="h-4 w-40 mt-1" />
+                            <Skeleton className="h-4 w-48 mt-1" />
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {donation.location}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          For: {donation.recipient}
-                        </p>
+                        <div className="text-right">
+                          <Skeleton className="h-4 w-32 ml-auto" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+            ) : myBlood.length > 0 ? (
+              myBlood.map((donation) => (
+                <Card key={donation.id}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-secondary rounded-lg flex items-center justify-center">
+                          <Heart className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">
+                              {donation.request.bloodType} Donation
+                            </h3>
+                            <Badge variant={getStatusColor(donation.status)}>
+                              {donation.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {donation.request.location}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Blood Request User Number:{" "}
+                            {donation.request.contactPhone}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4" />
+                          {new Date(donation.request.date).toLocaleDateString()}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(donation.date).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    No Donation History
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    You haven't made any blood donations yet.
+                  </p>
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
         </TabsContent>
 
@@ -565,35 +657,43 @@ const BloodDonation = () => {
               <div className="grid grid-responsive-cols sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label
-                    htmlFor="request-blood-type"
+                    htmlFor="bloodType"
                     className="text-responsive sm:text-sm"
                   >
                     Blood Type Needed
                   </Label>
-                  <select className="w-full p-2 border border-input rounded-md text-responsive sm:text-sm">
+                  <select
+                    id="bloodType"
+                    value={formData.bloodType}
+                    onChange={handleChange}
+                    className="w-full p-2 border border-input rounded-md text-responsive sm:text-sm"
+                  >
                     <option value="">Select blood type</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
+
+                    <option value="A_POS">A+</option>
+                    <option value="A_NEG">A-</option>
+                    <option value="B_POS">B+</option>
+                    <option value="B_NEG">B-</option>
+                    <option value="AB_POS">AB+</option>
+                    <option value="AB_NEG">AB-</option>
+                    <option value="O_POS">O+</option>
+                    <option value="O_NEG">O-</option>
                   </select>
                 </div>
                 <div>
                   <Label
-                    htmlFor="units-needed"
+                    htmlFor="unitsNeeded"
                     className="text-responsive sm:text-sm"
                   >
                     Units Needed
                   </Label>
                   <Input
-                    id="units-needed"
+                    id="unitsNeeded"
                     type="number"
                     placeholder="1"
                     min="1"
+                    value={formData.unitsNeeded}
+                    onChange={handleChange}
                     className="text-responsive sm:text-sm"
                   />
                 </div>
@@ -601,57 +701,61 @@ const BloodDonation = () => {
 
               <div className="grid grid-responsive-cols sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label
-                    htmlFor="request-date"
-                    className="text-responsive sm:text-sm"
-                  >
+                  <Label htmlFor="date" className="text-responsive sm:text-sm">
                     Required Date
                   </Label>
                   <Input
-                    id="request-date"
+                    id="date"
                     type="date"
+                    value={formData.date}
+                    onChange={handleChange}
                     className="text-responsive sm:text-sm"
                   />
                 </div>
                 <div>
                   <Label
-                    htmlFor="urgency"
+                    htmlFor="urgencyLevel"
                     className="text-responsive sm:text-sm"
                   >
                     Urgency Level
                   </Label>
-                  <select className="w-full p-2 border border-input rounded-md text-responsive sm:text-sm">
+                  <select
+                    id="urgencyLevel"
+                    value={formData.urgencyLevel}
+                    onChange={handleChange}
+                    className="w-full p-2 border border-input rounded-md text-responsive sm:text-sm"
+                  >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
                     <option value="high">High</option>
-                    <option value="critical">Critical</option>
                   </select>
                 </div>
               </div>
 
               <div>
                 <Label
-                  htmlFor="request-location"
+                  htmlFor="location"
                   className="text-responsive sm:text-sm"
                 >
                   Location
                 </Label>
                 <Input
-                  id="request-location"
+                  id="location"
+                  value={formData.location}
+                  onChange={handleChange}
                   placeholder="Hospital/clinic location"
                   className="text-responsive sm:text-sm"
                 />
               </div>
 
               <div>
-                <Label
-                  htmlFor="request-notes"
-                  className="text-responsive sm:text-sm"
-                >
+                <Label htmlFor="notes" className="text-responsive sm:text-sm">
                   Additional Notes
                 </Label>
                 <Textarea
-                  id="request-notes"
+                  id="notes"
+                  value={formData.notes}
+                  onChange={handleChange}
                   placeholder="Describe the medical need, patient condition, or any special requirements..."
                   className="min-h-16 sm:min-h-20 text-responsive sm:text-sm"
                 />
@@ -659,14 +763,16 @@ const BloodDonation = () => {
 
               <div>
                 <Label
-                  htmlFor="contact-phone"
+                  htmlFor="contactPhone"
                   className="text-responsive sm:text-sm"
                 >
                   Contact Phone
                 </Label>
                 <Input
-                  id="contact-phone"
+                  id="contactPhone"
                   type="tel"
+                  value={formData.contactPhone}
+                  onChange={handleChange}
                   placeholder="+1-555-0123"
                   className="text-responsive sm:text-sm"
                 />
@@ -674,7 +780,7 @@ const BloodDonation = () => {
 
               <Button
                 onClick={handleCreateBloodRequest}
-                className="w-full text-responsive sm:text-sm"
+                className="w-full text-responsive sm:text-sm text-white"
                 variant="hero"
                 size="sm"
               >
