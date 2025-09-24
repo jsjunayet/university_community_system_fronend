@@ -84,7 +84,7 @@ export const ApprovedJobPost = async (
     throw new Error(error.message || "Something went wrong");
   }
 };
-export const CreateJobPost = async (payload): Promise<any> => {
+export const CreateJobPost = async (payload: any): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {

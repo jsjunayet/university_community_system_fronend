@@ -1,11 +1,8 @@
+// app/login/page.tsx
+"use client";
+
 import LoginPage from "@/components/page/LoginPage";
 
-const Login = () => {
-  return (
-    <div>
-      <LoginPage />
-    </div>
-  );
-};
-
-export default Login;
+export default function Login() {
+  return <LoginPage />;
+}

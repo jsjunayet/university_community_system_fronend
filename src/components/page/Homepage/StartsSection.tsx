@@ -3,17 +3,17 @@ import { Card, CardContent } from "@/components/ui/card";
 const StatsSection = () => {
   const stats = [
     {
-      number: "10,000+",
+      number: "10+",
       label: "Active Users",
       description: "Students, alumni, and staff",
     },
     {
-      number: "500+",
+      number: "15+",
       label: "Blood Donations",
       description: "Lives saved through our platform",
     },
     {
-      number: "1,200+",
+      number: "12+",
       label: "Events Organized",
       description: "Community gatherings and activities",
     },

@@ -1,3 +1,4 @@
+"use client";
 import BloodDonation from "@/components/page/BloodDonation";
 
 const BloodDonationPage = () => {

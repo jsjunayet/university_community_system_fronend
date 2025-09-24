@@ -55,10 +55,10 @@ const About = () => {
   ];
 
   const stats = [
-    { label: "Active Members", value: "10,000+" },
-    { label: "Events Organized", value: "500+" },
-    { label: "Blood Units Donated", value: "2,000+" },
-    { label: "Job Placements", value: "1,200+" },
+    { label: "Active Members", value: "10+" },
+    { label: "Events Organized", value: "15+" },
+    { label: "Blood Units Donated", value: "12+" },
+    { label: "Job Placements", value: "100+" },
   ];
 
   return (

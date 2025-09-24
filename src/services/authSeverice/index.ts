@@ -222,7 +222,7 @@ export const DeletedUser = async (id: string) => {
     return Error(error.message);
   }
 };
-export const UpdateRole = async (id: string, payload) => {
+export const UpdateRole = async (id: string, payload: any) => {
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_API}/user/role/${id}`,
@@ -246,7 +246,7 @@ export const UpdateRole = async (id: string, payload) => {
     return Error(error.message);
   }
 };
-export const PasswordChange = async (payload) => {
+export const PasswordChange = async (payload: any) => {
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_API}/user/changePassword`,

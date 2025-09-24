@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  Bell,
   Briefcase,
   Calendar,
   GraduationCap,
@@ -72,10 +71,10 @@ const Navigation = () => {
 
           {/* User Actions */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
+            {/* <Button variant="ghost" size="icon" className="relative">
               <Bell className="w-4 h-4" />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full"></span>
-            </Button>
+            </Button> */}
 
             <div className="hidden sm:flex items-center gap-2">
               <div className="text-right">

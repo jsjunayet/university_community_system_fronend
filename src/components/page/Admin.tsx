@@ -1,4 +1,5 @@
 "use client";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +46,7 @@ import {
   ApprovedTourGroup,
   getAllAdminTourGroup,
 } from "@/services/tourService";
-import { BloodDonation, Event, User } from "@/types";
+import { User } from "@/types";
 import {
   AlertTriangle,
   Bookmark,
@@ -57,6 +58,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -91,9 +93,10 @@ const Admin = () => {
   const [isEventLoading, setIsEventLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [adminEvents, setAdminEvents] = useState<any[]>([]);
-  const [jobs, setJobs] = useState([]);
-  const [tours, setTours] = useState([]);
-
+  const [tours, setTours] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("users");
   // Mock data
   const [formData, setFormData] = useState({
     name: "",
@@ -103,7 +106,6 @@ const Admin = () => {
     studentId: "", // 👈 নতুন ফিল্ড
     password: "",
   });
-  const [posts, setPosts] = useState([]);
 
   const formatbloodGroup = (type: string) => {
     const map: Record<string, string> = {
@@ -118,11 +120,41 @@ const Admin = () => {
     };
     return map[type] || type;
   };
+  const searchParams = useSearchParams();
 
   // State to control dialog open/close
   const [dialogOpen, setDialogOpen] = useState(false);
-
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && ["users", "events", "community", "tours"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
   const handleCreateUser = async () => {
+    if (!formData.name.trim()) {
+      toast.error("Full name is required");
+      return;
+    }
+    if (!formData.email.includes("@")) {
+      toast.error("Valid email is required");
+      return;
+    }
+    if (!formData.role) {
+      toast.error("Role must be selected");
+      return;
+    }
+    if (!formData.bloodGroup) {
+      toast.error("Blood group must be selected");
+      return;
+    }
+    if (!formData.studentId.trim()) {
+      toast.error("Student ID is required");
+      return;
+    }
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
     try {
       console.log(formData);
       setisLoading(true);
@@ -148,7 +180,7 @@ const Admin = () => {
       } else {
         toast.error(res.message || "Failed to create user");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Something went wrong!");
     } finally {
@@ -157,8 +189,6 @@ const Admin = () => {
   };
 
   const [users, setUsers] = useState<User[]>();
-  const [events] = useState<Event[]>();
-  const [bloodDonations] = useState<BloodDonation[]>();
 
   // Fetch users and events when component mounts
   useEffect(() => {
@@ -174,7 +204,7 @@ const Admin = () => {
       const res = await DeletedUser(id);
       if (res.success) {
         toast.success(res.message);
-        setUsers(users.filter((u) => u.id !== id));
+        fetchUsers();
       } else {
         toast.error(res.message);
       }
@@ -294,7 +324,7 @@ const Admin = () => {
       setIsActionLoading(true);
       const response = await ApprovedTourGroup(eventId, status);
       if (response.success) {
-        fetchEvents(); // Refresh events list
+        fetchTours(); // Refresh events list
       } else {
         toast.error(response.message || "Failed to approve Tour");
       }
@@ -310,7 +340,7 @@ const Admin = () => {
       setIsActionLoading(true);
       const response = await ApprovedJobPost(eventId, status);
       if (response.success) {
-        fetchEvents(); // Refresh events list
+        fetchJob();
       } else {
         toast.error(response.message || "Failed to approve Job");
       }
@@ -321,14 +351,13 @@ const Admin = () => {
       setIsActionLoading(false);
     }
   };
-  console.log(tours);
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+    <div className="md:p-6 p-2 space-y-6">
+      <div className="sm:flex justify-between items-center">
+        <h1 className="text-2xl font-bold mb-2 sm:mt-0">Admin Dashboard</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className=" ">
               <Users className="w-4 h-4 mr-2" />
               Add New User
             </Button>
@@ -510,26 +539,51 @@ const Admin = () => {
         </Card>
       </div>
 
-      <Tabs defaultValue="users">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="events">Events</TabsTrigger>
-          <TabsTrigger value="tours">Tours</TabsTrigger>
-          <TabsTrigger value="jobs">Job Portal</TabsTrigger>
-          <TabsTrigger value="community">Community</TabsTrigger>
+      <Tabs defaultValue="users" onValueChange={setActiveTab} value={activeTab}>
+        <TabsList className="flex w-full overflow-x-auto gap-1 no-scrollbar sm:grid sm:grid-cols-5">
+          <TabsTrigger
+            value="users"
+            className="px-3 py-2 min-w-fit text-sm text-center"
+          >
+            Users
+          </TabsTrigger>
+          <TabsTrigger
+            value="events"
+            className="px-3 py-2 min-w-fit text-sm text-center"
+          >
+            Events
+          </TabsTrigger>
+          <TabsTrigger
+            value="tours"
+            className="px-3 py-2 min-w-fit text-sm text-center"
+          >
+            Tours
+          </TabsTrigger>
+          <TabsTrigger
+            value="jobs"
+            className="px-3 py-2 min-w-fit text-sm text-center"
+          >
+            Job Portal
+          </TabsTrigger>
+          <TabsTrigger
+            value="community"
+            className="px-3 py-2 min-w-fit text-sm text-center"
+          >
+            Community
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="md:flex justify-between items-center">
                 <CardTitle>User Management</CardTitle>
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Search users..."
-                    className="pl-8"
+                    className="pl-8 w-52 md:w-full mt-2 sm:mt-0"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -557,7 +611,7 @@ const Admin = () => {
                         .fill(0)
                         .map((_, index) => <TableRowSkeleton key={index} />)
                     : users
-                        .filter(
+                        ?.filter(
                           (user) =>
                             user.name
                               .toLowerCase()
@@ -577,7 +631,7 @@ const Admin = () => {
                                 variant={
                                   user.role === "admin"
                                     ? "destructive"
-                                    : user.role === "faculty"
+                                    : user.role === "alumni"
                                     ? "outline"
                                     : "default"
                                 }
@@ -588,6 +642,7 @@ const Admin = () => {
                             <TableCell>{user.bloodGroup}</TableCell>
                             <TableCell>
                               <Button
+                                disabled={user.role === "superAdmin"}
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDeleteUser(user.id)}
@@ -606,14 +661,14 @@ const Admin = () => {
         <TabsContent value="events" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="sm:flex justify-between items-center">
                 <CardTitle>Event Management</CardTitle>
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Search events..."
-                    className="pl-8"
+                    className="pl-8 w-52 md:w-full mt-2 sm:mt-0"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />

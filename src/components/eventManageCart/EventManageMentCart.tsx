@@ -47,7 +47,7 @@ interface Event {
   maxParticipants: number;
   registrationDeadline: string;
   contactEmail: string;
-  status: "pending" | "approved" | "completed" | "cancelled";
+  status: "pending" | "approved" | "completed" | "cancelled" | "rejected";
   organizer: {
     id: string;
     name: string;
@@ -57,7 +57,7 @@ interface Event {
 }
 
 interface EventManagementCardProps {
-  event: Event;
+  event: any;
   isOrganizer?: boolean;
   userJoinStatus?: "none" | "pending" | "accepted" | "rejected";
   onJoinEvent?: (eventId: string) => void;
@@ -276,11 +276,14 @@ export const EventManagementCard = ({
           <div className="border-t pt-3 sm:pt-4 space-y-3">
             <h4 className="font-medium text-responsive sm:text-sm">
               Join Requests (
-              {event.participants.filter((p) => p.status === "PENDING").length}{" "}
+              {
+                event.participants.filter((p: any) => p.status === "PENDING")
+                  .length
+              }{" "}
               pending)
             </h4>
             <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
-              {event.participants.map((participant) => (
+              {event.participants.map((participant: any) => (
                 <div
                   key={participant.id}
                   className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 sm:p-3 bg-muted rounded-md gap-2 sm:gap-0"

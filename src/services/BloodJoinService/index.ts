@@ -31,9 +31,7 @@ export const ApprovedOrRejectedStatusBloodDonationJoin = async (
   id: string,
   status: "ACCEPTED" | "REJECTED"
 ): Promise<any> => {
-  console.log(id, status);
   const token = (await cookies()).get("accessToken")!.value;
-
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_API}/donation-join/${id}/status`,
@@ -54,7 +52,9 @@ export const ApprovedOrRejectedStatusBloodDonationJoin = async (
   }
 };
 
-export const CreateTourBloodDonationJoin = async (payload): Promise<any> => {
+export const CreateTourBloodDonationJoin = async (
+  payload: any
+): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {

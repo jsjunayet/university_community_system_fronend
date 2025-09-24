@@ -1,6 +1,6 @@
 "use client";
 
-import { getCurrentUser } from "@/services/authSeverice";
+import { getCurrentUser, logout } from "@/services/authSeverice";
 import { User } from "@/types";
 import React, { createContext, useContext, useEffect, useState } from "react";
 

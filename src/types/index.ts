@@ -7,7 +7,7 @@ export interface User {
   image?: string; // Added for profile image compatibility
   department?: string;
   graduationYear?: number;
-  bloodType?: string;
+  bloodGroup?: string;
   phone?: string;
   verified: boolean;
 }

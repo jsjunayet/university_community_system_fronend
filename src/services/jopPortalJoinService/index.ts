@@ -35,7 +35,7 @@ export const ApprovedOrRejectedStatusJobPostJoin = async (
 
   try {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_API}/job-apply/${id}/verify`,
+      `${process.env.NEXT_PUBLIC_BASE_API}/job-apply/${id}/status`,
       {
         method: "PATCH",
         headers: {
@@ -53,7 +53,7 @@ export const ApprovedOrRejectedStatusJobPostJoin = async (
   }
 };
 
-export const CreateTourJobPostJoin = async (payload): Promise<any> => {
+export const CreateTourJobPostJoin = async (payload: any): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {

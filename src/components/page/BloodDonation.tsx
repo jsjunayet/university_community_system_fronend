@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,12 +78,12 @@ const BloodDonation = () => {
   interface BloodDonation {
     id: string;
     status: string;
-    request: BloodRequest;
+    request: BloodDonation | BloodRequest;
   }
 
-  const [Blood, setBlood] = useState<BloodRequest[]>([]);
-  const [Avaiableblood, setAvaiableblood] = useState<BloodRequest[]>([]);
-  const [myBlood, setMyblood] = useState<BloodDonation[]>([]);
+  const [Blood, setBlood] = useState<any>([]);
+  const [Avaiableblood, setAvaiableblood] = useState<any>([]);
+  const [myBlood, setMyblood] = useState<any>([]);
 
   const fetchMyblood = async () => {
     try {
@@ -179,16 +180,7 @@ const BloodDonation = () => {
     }
     // later => send requestPayload to backend API
   };
-  // useEffect(() => {
-  //   // Request permission for notifications and listen for messages
-  //   requestForToken();
 
-  //   onMessageListener()
-  //     .then((payload: any) => {
-  //       toast(`${payload.notification.title}`);
-  //     })
-  //     .catch((err) => console.log("failed: ", err));
-  // }, [toast]);
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
       case "critical":
@@ -229,21 +221,20 @@ const BloodDonation = () => {
     const res = await CreateTourBloodDonationJoin(payload);
     console.log(res, "hhh");
     if (res.success) {
+      fetchMyblood();
+      fetchOwn();
       toast.success("Sucessfull Join");
       fetchMyblood();
     } else {
       toast.error("Something is Wrong");
     }
   };
-  const handleRequestAction = async (
-    requestId: string,
-    status: "ACCEPTED" | "REJECTED"
-  ) => {
+  const handleRequestAction = async (requestId: string, status: any) => {
     const res = await ApprovedOrRejectedStatusBloodDonationJoin(
       requestId,
       status
     );
-    console.log(res);
+    console.log(res, "wh");
 
     if (res.success) {
       toast.success(`${res.message}`);
@@ -255,7 +246,7 @@ const BloodDonation = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-primary text-white p-responsive sm:p-6 rounded-lg">
+      <div className="bg-gradient-primary text-white p-responsive sm:p-6 p-2  rounded-lg">
         <div className="flex items-center gap-2 sm:gap-4 flex-responsive-col sm:flex-row text-center sm:text-left">
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-lg flex items-center justify-center">
             <Heart className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -272,195 +263,32 @@ const BloodDonation = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
-          {/* <TabsTrigger value="donate" className="text-responsive sm:text-sm">
-            Donate
-          </TabsTrigger> */}
-          <TabsTrigger value="requests" className="text-responsive sm:text-sm">
+        <TabsList className="flex w-full overflow-x-auto sm:grid sm:grid-cols-4 gap-1 no-scrollbar">
+          <TabsTrigger
+            value="requests"
+            className="flex-1 min-w-[120px] text-responsive sm:text-sm"
+          >
             Requests
           </TabsTrigger>
           <TabsTrigger
             value="my-requests"
-            className="text-responsive sm:text-sm"
+            className="flex-1 min-w-[120px] text-responsive sm:text-sm"
           >
             My Requests
           </TabsTrigger>
-          <TabsTrigger value="history" className="text-responsive sm:text-sm">
+          <TabsTrigger
+            value="history"
+            className="flex-1 min-w-[120px] text-responsive sm:text-sm"
+          >
             History
           </TabsTrigger>
-          <TabsTrigger value="create" className="text-responsive sm:text-sm">
+          <TabsTrigger
+            value="create"
+            className="flex-1 min-w-[120px] text-responsive sm:text-sm"
+          >
             Create Request
           </TabsTrigger>
         </TabsList>
-
-        {/* Donate Blood Tab */}
-        {/* <TabsContent value="donate" className="space-y-4 sm:space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <Card>
-              <CardHeader className="p-responsive sm:p-6">
-                <CardTitle className="flex items-center gap-2 text-responsive-lg sm:text-lg">
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Register for Blood Donation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-responsive sm:p-6 pt-0 space-y-3 sm:space-y-4">
-                <div className="grid grid-responsive-cols sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <Label
-                      htmlFor="blood-type"
-                      className="text-responsive sm:text-sm"
-                    >
-                      Blood Type
-                    </Label>
-                    <Input
-                      id="blood-type"
-                      value={user?.bloodType || ""}
-                      placeholder="A+, B+, O-, etc."
-                      readOnly
-                      className="text-responsive sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label
-                      htmlFor="donation-date"
-                      className="text-responsive sm:text-sm"
-                    >
-                      Preferred Date
-                    </Label>
-                    <Input
-                      id="donation-date"
-                      type="date"
-                      className="text-responsive sm:text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label
-                    htmlFor="location"
-                    className="text-responsive sm:text-sm"
-                  >
-                    Preferred Location
-                  </Label>
-                  <select className="w-full p-2 border border-input rounded-md text-responsive sm:text-sm">
-                    <option value="">Select location</option>
-                    <option value="campus">University Health Center</option>
-                    <option value="hospital">City General Hospital</option>
-                    <option value="bank">Regional Blood Bank</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="notes" className="text-responsive sm:text-sm">
-                    Additional Notes
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Any special requirements or medical conditions..."
-                    className="min-h-16 sm:min-h-20 text-responsive sm:text-sm"
-                  />
-                </div>
-
-                <Button
-                  onClick={handleDonationRegistration}
-                  className="w-full text-responsive sm:text-sm"
-                  variant="hero"
-                  size="sm"
-                >
-                  <Heart className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                  Register to Donate
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="p-responsive sm:p-6">
-                <CardTitle className="text-responsive-lg sm:text-lg">
-                  Donation Guidelines
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-responsive sm:p-6 pt-0 space-y-3 sm:space-y-4">
-                <div className="space-y-2 sm:space-y-3">
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 bg-university-green rounded-full flex items-center justify-center mt-0.5">
-                      <Droplet className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-responsive sm:text-sm">
-                        Age Requirement
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        18-65 years old
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-university-green rounded-full flex items-center justify-center mt-0.5">
-                      <Droplet className="w-3 h-3 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Weight Requirement</p>
-                      <p className="text-xs text-muted-foreground">
-                        Minimum 50kg (110 lbs)
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-university-green rounded-full flex items-center justify-center mt-0.5">
-                      <Droplet className="w-3 h-3 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Health Status</p>
-                      <p className="text-xs text-muted-foreground">
-                        Good general health
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-university-green rounded-full flex items-center justify-center mt-0.5">
-                      <Droplet className="w-3 h-3 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Donation Frequency</p>
-                      <p className="text-xs text-muted-foreground">
-                        Every 56 days (8 weeks)
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3 sm:p-4 bg-muted rounded-lg">
-                  <p className="text-responsive sm:text-sm font-medium mb-2">
-                    Your Profile
-                  </p>
-                  <div className="space-y-1 text-responsive sm:text-sm text-muted-foreground">
-                    <p>
-                      Blood Type:{" "}
-                      <span className="font-medium text-foreground">
-                        {user?.bloodType || "Not specified"}
-                      </span>
-                    </p>
-                    <p>
-                      Last Donation:{" "}
-                      <span className="font-medium text-foreground">
-                        January 10, 2024
-                      </span>
-                    </p>
-                    <p>
-                      Next Eligible:{" "}
-                      <span className="font-medium text-foreground">
-                        March 6, 2024
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent> */}
 
         {/* Blood Requests Tab */}
         <TabsContent value="requests" className="space-y-4 sm:space-y-6">
@@ -470,7 +298,7 @@ const BloodDonation = () => {
             </h2>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+          {/* <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
             <Input
               placeholder="Search by blood type..."
               className="w-full sm:w-48 lg:w-64 text-responsive sm:text-sm"
@@ -482,7 +310,7 @@ const BloodDonation = () => {
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
-          </div>
+          </div> */}
 
           <div className="grid gap-4 sm:gap-6">
             {isLoading ? (
@@ -491,11 +319,11 @@ const BloodDonation = () => {
                 .fill(0)
                 .map((_, index) => <BloodRequestCardSkeleton key={index} />)
             ) : Avaiableblood.length > 0 ? (
-              Avaiableblood.map((request) => (
+              Avaiableblood.map((request: any) => (
                 <BloodRequestCard
                   key={request.id}
                   request={request}
-                  userBloodType={user?.bloodGroup}
+                  bloodGroup={user?.bloodGroup}
                   onRespond={handleBloodRequestAction}
                 />
               ))
@@ -528,11 +356,11 @@ const BloodDonation = () => {
                 .fill(0)
                 .map((_, index) => <BloodRequestCardSkeleton key={index} />)
             ) : Blood.length > 0 ? (
-              Blood.map((request) => (
+              Blood.map((request: any) => (
                 <BloodRequestCard
                   key={request.id}
                   request={request}
-                  userBloodType={user?.bloodGroup}
+                  bloodGroup={user?.bloodGroup}
                   isOwnRequest={true}
                   onRespond={handleRequestAction}
                 />
@@ -588,7 +416,7 @@ const BloodDonation = () => {
                   </Card>
                 ))
             ) : myBlood.length > 0 ? (
-              myBlood.map((donation) => (
+              myBlood.map((donation: any) => (
                 <Card key={donation.id}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">

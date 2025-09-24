@@ -2,7 +2,6 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,12 +32,11 @@ import {
   CheckCircle,
   Clock,
   DollarSign,
-  Info,
+  Eye,
   MapPin,
   Plus,
   Route,
   User,
-  XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -58,12 +57,14 @@ const TourCardSkeleton = () => (
           <Skeleton className="h-4 w-5/6 mb-4" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-4">
-            {Array(3).fill(0).map((_, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Skeleton className="h-4 w-4" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            ))}
+            {Array(3)
+              .fill(0)
+              .map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-4" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
           </div>
 
           <div className="mb-4">
@@ -131,8 +132,6 @@ const Tours = () => {
   const [groupTours, setGroupTours] = useState<GroupTour[]>([]);
   const [AvaiableTour, setAvaiableTour] = useState<GroupTour[]>([]);
   const [myTours, setMyTours] = useState<TourJoin[]>([]);
-  console.log(myTours, "my");
-  
   const fetchMyTour = async () => {
     try {
       const res = await getOwnTourGroup();
@@ -146,7 +145,7 @@ const Tours = () => {
       toast.error("An error occurred while fetching your tours");
     }
   };
-  
+
   const fetchAllTour = async () => {
     try {
       setIsLoading(true);
@@ -163,7 +162,7 @@ const Tours = () => {
       setIsLoading(false);
     }
   };
-  
+
   const fetchOwn = async () => {
     try {
       const res = await getMyGroupJoin();
@@ -177,7 +176,7 @@ const Tours = () => {
       toast.error("An error occurred while fetching joined tours");
     }
   };
-  
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -185,7 +184,7 @@ const Tours = () => {
         await Promise.all([
           fetchMyTour(),
           fetchAllTour(),
-          user ? fetchOwn() : Promise.resolve()
+          user ? fetchOwn() : Promise.resolve(),
         ]);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -193,7 +192,7 @@ const Tours = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
   }, [user]);
   const [newTourData, setNewTourData] = useState({
@@ -240,15 +239,18 @@ const Tours = () => {
       return;
     }
 
-    const newTour: GroupTour = {
+    const newTour: any = {
       id: Date.now().toString(),
       ...newTourData,
       deadline: new Date(newTourData.deadline),
     };
-    console.log(newTour);
+
     const res = await CreateTourGroup(newTour);
     if (res?.success) {
       toast(`${res?.message}`);
+      fetchAllTour();
+      fetchMyTour();
+      fetchOwn();
     } else {
       toast(`${res?.message}`);
     }
@@ -326,10 +328,10 @@ const Tours = () => {
       trxId: joinFormData.trxId,
       amount: parseFloat(selectedTour.price),
     };
-    console.log(payload);
     const res = await CreateTourGroupJoin(payload);
     console.log(res);
     if (res.success) {
+      fetchOwn();
       toast.success(`${res.message}`);
     } else {
       toast.error(`${res.message}`);
@@ -348,7 +350,7 @@ const Tours = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-accent text-white p-responsive sm:p-6 rounded-lg">
+      <div className="bg-gradient-accent text-white p-responsive sm:p-6 p-2 rounded-lg">
         <div className="flex items-center gap-2 sm:gap-4 flex-responsive-col sm:flex-row text-center sm:text-left">
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-lg flex items-center justify-center">
             <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -388,89 +390,78 @@ const Tours = () => {
         <TabsContent value="available" className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Upcoming Tours</h2>
-            <div className="flex gap-2">
-              <select className="p-2 border border-input rounded-md">
-                <option value="">All Difficulties</option>
-                <option value="easy">Easy</option>
-                <option value="moderate">Moderate</option>
-                <option value="hard">Hard</option>
-              </select>
-              <select className="p-2 border border-input rounded-md">
-                <option value="">All Types</option>
-                <option value="campus">Campus Tours</option>
-                <option value="city">City Tours</option>
-                <option value="cultural">Cultural Tours</option>
-              </select>
-            </div>
           </div>
 
           <div className="grid gap-6">
-            {isLoading ? (
-              // Show skeleton loading while data is being fetched
-              Array(3).fill(0).map((_, index) => (
-                <TourCardSkeleton key={index} />
-              ))
-            ) : (
-              AvaiableTour?.map((tour) => (
-                <Card
-                  key={tour.id}
-                  className="hover:shadow-medium transition-shadow"
-                >
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-xl font-semibold">{tour.title}</h3>
-                          <Badge variant={getDifficultyColor(tour.difficulty)}>
-                            {tour.difficulty}
-                          </Badge>
-                          <Badge variant="outline">{tour.duration}h</Badge>
-                        </div>
-                        <p className="text-muted-foreground mb-4">
-                          {tour.description}
-                        </p>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-4">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span>
-                              {new Date(tour.deadline).toLocaleDateString()}
-                            </span>
+            {isLoading
+              ? // Show skeleton loading while data is being fetched
+                Array(3)
+                  .fill(0)
+                  .map((_, index) => <TourCardSkeleton key={index} />)
+              : AvaiableTour?.map((tour: any) => (
+                  <Card
+                    key={tour.id}
+                    className="hover:shadow-medium transition-shadow"
+                  >
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="md:flex items-center gap-3 mb-2">
+                            <h3 className="text-xl font-semibold">
+                              {tour.title}
+                            </h3>
+                            <Badge
+                              variant={getDifficultyColor(tour.difficulty)}
+                            >
+                              {tour.difficulty}
+                            </Badge>
+                            <Badge variant="outline">{tour.duration}h</Badge>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span>
-                              {tour.time} ({tour.duration}h)
-                            </span>
+                          <p className="text-muted-foreground mb-4">
+                            {tour.description}
+                          </p>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-4">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-muted-foreground" />
+                              <span>
+                                {new Date(tour.deadline).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-muted-foreground" />
+                              <span>
+                                {tour.time} ({tour.duration}h)
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-muted-foreground" />
+                              <span>By {tour.author.name}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-muted-foreground" />
-                            <span>By {tour.author.name}</span>
+
+                          {/* Tour Route */}
+                          <div className="mb-4">
+                            <h4 className="font-medium mb-2 flex items-center gap-2">
+                              <Route className="w-4 h-4" />
+                              Tour Route
+                            </h4>
+                            {tour.route}
+                          </div>
+
+                          {/* Highlights */}
+                          <div className="mb-4">
+                            <h4 className="font-medium mb-2 flex items-center gap-2">
+                              <Camera className="w-4 h-4" />
+                              Highlights
+                            </h4>
+                            <div>{tour.highlights}</div>
                           </div>
                         </div>
 
-                        {/* Tour Route */}
-                        <div className="mb-4">
-                          <h4 className="font-medium mb-2 flex items-center gap-2">
-                            <Route className="w-4 h-4" />
-                            Tour Route
-                          </h4>
-                          {tour.route}
-                        </div>
-
-                        {/* Highlights */}
-                        <div className="mb-4">
-                          <h4 className="font-medium mb-2 flex items-center gap-2">
-                            <Camera className="w-4 h-4" />
-                            Highlights
-                          </h4>
-                          <div>{tour.highlights}</div>
-                        </div>
-                      </div>
-
-                      <div className="text-right ml-6">
-                        <div className="space-y-2">
-                          {/* <Button
+                        <div className="text-right ml-6">
+                          <div className="space-y-2">
+                            {/* <Button
                             variant="hero"
                             size="sm"
                             onClick={() => handleJoinTour(tour.id)}
@@ -483,92 +474,93 @@ const Tours = () => {
                               ? "Full"
                               : "Join Tour"}
                           </Button> */}
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="hero"
-                                size="sm"
-                                className="w-full"
-                                onClick={() => setSelectedTour(tour)}
-                                disabled={
-                                  tour.currentParticipants >= tour.maxParticipants
-                                }
-                              >
-                                {tour.currentParticipants >= tour.maxParticipants
-                                  ? "Full"
-                                  : "Join Tour"}
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>
-                                  Join {selectedTour?.title || "Tour"}
-                                </DialogTitle>
-                              </DialogHeader>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="hero"
+                                  size="sm"
+                                  className="w-full"
+                                  onClick={() => setSelectedTour(tour)}
+                                  disabled={
+                                    tour.currentParticipants >=
+                                    tour.maxParticipants
+                                  }
+                                >
+                                  {tour.currentParticipants >=
+                                  tour.maxParticipants
+                                    ? "Full"
+                                    : "Join Tour"}
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    Join {selectedTour?.title || "Tour"}
+                                  </DialogTitle>
+                                </DialogHeader>
 
-                              {selectedTour && (
-                                <div className="space-y-4">
-                                  <div className="bg-muted p-4 rounded-lg">
-                                    <p className="text-sm font-medium mb-2">
-                                      Payment Details:
-                                    </p>
-                                    <p className="text-sm">
-                                      Amount: ৳{selectedTour.price}
-                                    </p>
-                                    <p className="text-sm">
-                                      bKash: {selectedTour.bkashNumber}
-                                    </p>
+                                {selectedTour && (
+                                  <div className="space-y-4">
+                                    <div className="bg-muted p-4 rounded-lg">
+                                      <p className="text-sm font-medium mb-2">
+                                        Payment Details:
+                                      </p>
+                                      <p className="text-sm">
+                                        Amount: ৳{selectedTour.price}
+                                      </p>
+                                      <p className="text-sm">
+                                        bKash: {selectedTour.bkashNumber}
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <label className="text-sm font-medium">
+                                        Your bKash Number
+                                      </label>
+                                      <Input
+                                        value={joinFormData.bkashNumber}
+                                        onChange={(e) =>
+                                          setJoinFormData((prev) => ({
+                                            ...prev,
+                                            bkashNumber: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="01XXXXXXXXX"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label className="text-sm font-medium">
+                                        Transaction ID
+                                      </label>
+                                      <Input
+                                        value={joinFormData.trxId}
+                                        onChange={(e) =>
+                                          setJoinFormData((prev) => ({
+                                            ...prev,
+                                            trxId: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="Transaction ID from bKash"
+                                      />
+                                    </div>
+
+                                    <Button
+                                      onClick={handleJoinSubmit}
+                                      className="w-full"
+                                    >
+                                      Submit Join Request
+                                    </Button>
                                   </div>
-
-                                  <div>
-                                    <label className="text-sm font-medium">
-                                      Your bKash Number
-                                    </label>
-                                    <Input
-                                      value={joinFormData.bkashNumber}
-                                      onChange={(e) =>
-                                        setJoinFormData((prev) => ({
-                                          ...prev,
-                                          bkashNumber: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="01XXXXXXXXX"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="text-sm font-medium">
-                                      Transaction ID
-                                    </label>
-                                    <Input
-                                      value={joinFormData.trxId}
-                                      onChange={(e) =>
-                                        setJoinFormData((prev) => ({
-                                          ...prev,
-                                          trxId: e.target.value,
-                                        }))
-                                      }
-                                      placeholder="Transaction ID from bKash"
-                                    />
-                                  </div>
-
-                                  <Button
-                                    onClick={handleJoinSubmit}
-                                    className="w-full"
-                                  >
-                                    Submit Join Request
-                                  </Button>
-                                </div>
-                              )}
-                            </DialogContent>
-                          </Dialog>
+                                )}
+                              </DialogContent>
+                            </Dialog>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                </Card>
-              ))
-            )}
+                    </CardHeader>
+                  </Card>
+                ))}
           </div>
         </TabsContent>
 
@@ -741,21 +733,21 @@ const Tours = () => {
           </div>
 
           <div className="grid gap-6">
-            {isLoading ? (
-              // Show skeleton loading while data is being fetched
-              Array(3).fill(0).map((_, index) => (
-                <TourCardSkeleton key={index} />
-              ))
-            ) : groupTours.map((tour) => (
-              <TourManagementCard
-                key={tour.id}
-                tour={tour}
-                isAuthor={tour.authorId === user?.id}
-                onApprove={handleApproveJoin}
-                onReject={handleRejectJoin}
-                onJoin={handleTourJoin}
-              />
-            ))}
+            {isLoading
+              ? // Show skeleton loading while data is being fetched
+                Array(3)
+                  .fill(0)
+                  .map((_, index) => <TourCardSkeleton key={index} />)
+              : groupTours.map((tour) => (
+                  <TourManagementCard
+                    key={tour.id}
+                    tour={tour}
+                    isAuthor={tour.authorId === user?.id}
+                    onApprove={handleApproveJoin}
+                    onReject={handleRejectJoin}
+                    onJoin={handleTourJoin}
+                  />
+                ))}
           </div>
 
           {/* My Created Tours */}
@@ -765,26 +757,28 @@ const Tours = () => {
               <div className="grid gap-4">
                 {isLoading ? (
                   // Show skeleton loading while data is being fetched
-                  Array(3).fill(0).map((_, index) => (
-                    <Card key={index} className="bg-muted/50">
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
-                          <div className="w-full">
-                            <Skeleton className="h-6 w-48 mb-2" />
-                            <Skeleton className="h-4 w-full mb-2" />
-                            <Skeleton className="h-4 w-5/6 mb-2" />
-                            <div className="flex gap-2 mt-2">
-                              <Skeleton className="h-5 w-20" />
-                              <Skeleton className="h-5 w-32" />
+                  Array(3)
+                    .fill(0)
+                    .map((_, index) => (
+                      <Card key={index} className="bg-muted/50">
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div className="w-full">
+                              <Skeleton className="h-6 w-48 mb-2" />
+                              <Skeleton className="h-4 w-full mb-2" />
+                              <Skeleton className="h-4 w-5/6 mb-2" />
+                              <div className="flex gap-2 mt-2">
+                                <Skeleton className="h-5 w-20" />
+                                <Skeleton className="h-5 w-32" />
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <Skeleton className="h-5 w-16" />
                             </div>
                           </div>
-                          <div className="text-right">
-                            <Skeleton className="h-5 w-16" />
-                          </div>
-                        </div>
-                      </CardHeader>
-                    </Card>
-                  ))
+                        </CardHeader>
+                      </Card>
+                    ))
                 ) : myCreatedTours.length > 0 ? (
                   myCreatedTours.map((tour) => (
                     <Card key={tour.id} className="bg-muted/50">
@@ -823,7 +817,9 @@ const Tours = () => {
                   ))
                 ) : (
                   <div className="text-center py-6">
-                    <p className="text-muted-foreground">You haven't created any tours yet</p>
+                    <p className="text-muted-foreground">
+                      You haven't created any tours yet
+                    </p>
                   </div>
                 )}
               </div>
@@ -836,62 +832,92 @@ const Tours = () => {
           <h2 className="text-xl font-semibold">My Tour Registrations</h2>
 
           <div className="grid gap-4">
-            {isLoading ? (
-              // Show skeleton loading while data is being fetched
-              Array(3).fill(0).map((_, index) => (
-                <TourCardSkeleton key={index} />
-              ))
-            ) : myTours.map((tour) => (
-              <Card key={tour.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gradient-accent rounded-lg flex items-center justify-center">
-                        <MapPin className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{tour.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(tour.date).toLocaleDateString()}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge
-                            variant={getStatusColor(tour.confirmationStatus)}
-                          >
-                            {tour.confirmationStatus}
-                          </Badge>
-                          <Badge
-                            variant={
-                              tour.status === "completed"
-                                ? "secondary"
-                                : "outline"
-                            }
-                          >
-                            {tour.status}
-                          </Badge>
+            {isLoading
+              ? // Show skeleton loading while data is being fetched
+                Array(3)
+                  .fill(0)
+                  .map((_, index) => <TourCardSkeleton key={index} />)
+              : myTours.map((join: any) => (
+                  <div
+                    key={join.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <p className="font-medium text-sm">
+                            {join?.tour?.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {join?.tour?.deadline
+                              ? new Date(
+                                  join?.tour?.deadline
+                                ).toLocaleDateString()
+                              : ""}
+                          </p>
                         </div>
+                        <Badge
+                          variant={getStatusColor(join.status)}
+                          className="text-xs"
+                        >
+                          {join.status}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                        <span>৳{join.amount}</span>
+                        <span>TrxID: {join.trxId}</span>
+                        <span>{join.bkashNumber}</span>
                       </div>
                     </div>
+
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Info className="w-4 h-4 mr-2" />
-                        Details
-                      </Button>
-                      {tour.status === "upcoming" && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleCancelRegistration(tour.id)}
-                        >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          Cancel
-                        </Button>
-                      )}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Participant Details</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="font-medium">{join?.user?.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {join?.user?.email}
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="font-medium">Amount</p>
+                                <p>৳{join.amount}</p>
+                              </div>
+                              <div>
+                                <p className="font-medium">bKash Number</p>
+                                <p>{join.bkashNumber}</p>
+                              </div>
+                              <div>
+                                <p className="font-medium">Transaction ID</p>
+                                <p>{join.trxId}</p>
+                              </div>
+                              <div>
+                                <p className="font-medium">Status</p>
+                                <Badge variant={getStatusColor(join.status)}>
+                                  {join.status}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="font-medium">Applied</p>
+                              <p className="text-sm">{join?.createdAt}</p>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                ))}
           </div>
 
           {/* Tour Checklist */}

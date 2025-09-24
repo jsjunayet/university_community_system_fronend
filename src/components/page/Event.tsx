@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,8 +25,8 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { EventManagementCard } from "../eventManageCart/EventManageMentCart";
@@ -49,7 +50,7 @@ interface EventJoin {
   eventId: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   joinedAt: string | null;
-  meetLink: string | null;
+  meetLink?: string | null;
   createdAt: string;
   user: User;
   event: Event;
@@ -260,7 +261,7 @@ const Events = () => {
       setIsJoinLoading(false);
     }
   };
-
+  const searchParams = useSearchParams();
   const handleCreateEvent = async () => {
     // Validate form
     if (
@@ -302,7 +303,7 @@ const Events = () => {
         fetchEvents();
         fetchMyEvents();
         // Switch to browse tab
-        setActiveTab("browse");
+        setActiveTab("manage");
       } else {
         toast.error(response.message || "Failed to create event");
       }
@@ -380,6 +381,7 @@ const Events = () => {
   ) => {
     if (action === "approve" && meetLink) {
       await Approvedeventjoin(joinId, { meetLink });
+      fetchMyEvents();
       toast("Participant Approved");
     } else if (action === "reject") {
       await Rejectedeventjoin(joinId, { status: action });
@@ -395,7 +397,7 @@ const Events = () => {
         await Promise.all([
           fetchEvents(),
           user ? fetchMyEvents() : Promise.resolve(),
-          user ? fetchMyJoinedEvents() : Promise.resolve()
+          user ? fetchMyJoinedEvents() : Promise.resolve(),
         ]);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -403,10 +405,15 @@ const Events = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
   }, [user]);
-
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && ["create"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
   // Get user's join status for an event
   const getUserEventJoinStatus = (eventId: string) => {
     if (!user || !myJoinedEvents.length) return null;
@@ -433,37 +440,46 @@ const Events = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="browse">Browse Events</TabsTrigger>
-          <TabsTrigger value="my-events">My Events</TabsTrigger>
-          <TabsTrigger value="manage">Manage</TabsTrigger>
-
-          <TabsTrigger value="create">Create Event</TabsTrigger>
-          {/* <TabsTrigger value="calendar">Calendar View</TabsTrigger> */}
+        <TabsList className="flex w-full overflow-x-auto sm:grid sm:grid-cols-4 gap-1 no-scrollbar">
+          <TabsTrigger
+            value="browse"
+            className="px-3 py-2 min-w-fit text-sm sm:text-base text-center"
+          >
+            Browse Events
+          </TabsTrigger>
+          <TabsTrigger
+            value="my-events"
+            className="px-3 py-2 min-w-fit text-sm sm:text-base text-center"
+          >
+            My Events
+          </TabsTrigger>
+          <TabsTrigger
+            value="manage"
+            className="px-3 py-2 min-w-fit text-sm sm:text-base text-center"
+          >
+            Manage
+          </TabsTrigger>
+          <TabsTrigger
+            value="create"
+            className="px-3 py-2 min-w-fit text-sm sm:text-base text-center"
+          >
+            Create Event
+          </TabsTrigger>
         </TabsList>
 
         {/* Browse Events Tab */}
         <TabsContent value="browse" className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <h2 className="text-xl font-semibold">Upcoming Events</h2>
-            <div className="flex gap-2">
-              <Input placeholder="Search events..." className="w-64" />
-              <select className="p-2 border border-input rounded-md">
-                <option value="">All Categories</option>
-                <option value="academic">Academic</option>
-                <option value="professional">Professional</option>
-                <option value="cultural">Cultural</option>
-                <option value="social">Social</option>
-                <option value="sports">Sports</option>
-              </select>
-            </div>
+            <h2 className="text-xl font-semibold">All Events</h2>
           </div>
 
           {isLoading ? (
             <div className="grid gap-6">
-              {Array(3).fill(0).map((_, index) => (
-                <EventCardSkeleton key={index} />
-              ))}
+              {Array(3)
+                .fill(0)
+                .map((_, index) => (
+                  <EventCardSkeleton key={index} />
+                ))}
             </div>
           ) : events.length === 0 ? (
             <div className="text-center py-8">No events found</div>
@@ -480,7 +496,7 @@ const Events = () => {
                     <CardHeader className="pb-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="sm:flex items-center gap-3 mb-2">
                             <h3 className="text-xl font-semibold">
                               {event.title}
                             </h3>
@@ -590,9 +606,11 @@ const Events = () => {
             </div>
           ) : isLoading ? (
             <div className="grid gap-4">
-              {Array(3).fill(0).map((_, index) => (
-                <EventCardSkeleton key={index} />
-              ))}
+              {Array(3)
+                .fill(0)
+                .map((_, index) => (
+                  <EventCardSkeleton key={index} />
+                ))}
             </div>
           ) : myJoinedEvents.length === 0 ? (
             <Card>
@@ -632,9 +650,9 @@ const Events = () => {
                               {joinedEvent.status}
                             </Badge>
                             <Badge variant="outline">Participant</Badge>
-                            {joinedEvent.status === "APPROVED" && (
+                            {joinedEvent.meetLink && (
                               <Link
-                                href={joinedEvent.meetLink}
+                                href={joinedEvent.meetLink ?? "/fallback"}
                                 target="_blank"
                                 className="text-xs text-blue-500 hover:underline"
                               >
@@ -645,24 +663,17 @@ const Events = () => {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => {
-                          setSelectedEvent(joinedEvent.event);
-                          setShowEventDetails(true);
-                        }}>
-                          View Details
-                        </Button>
-                        {joinedEvent.status === "APPROVED" &&
-                          joinedEvent.meetLink && (
-                            <Button variant="university" size="sm" asChild>
-                              <a
-                                href={joinedEvent.meetLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                Join Meeting
-                              </a>
-                            </Button>
-                          )}
+                        {joinedEvent.meetLink && (
+                          <Button variant="university" size="sm" asChild>
+                            <a
+                              href={joinedEvent.meetLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Join Meeting
+                            </a>
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>

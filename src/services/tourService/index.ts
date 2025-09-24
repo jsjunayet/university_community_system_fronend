@@ -94,7 +94,7 @@ export const ApprovedTourGroup = async (
     throw new Error(error.message || "Something went wrong");
   }
 };
-export const CreateTourGroup = async (payload): Promise<any> => {
+export const CreateTourGroup = async (payload: any): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {

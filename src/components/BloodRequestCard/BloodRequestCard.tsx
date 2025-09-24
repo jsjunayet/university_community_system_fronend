@@ -21,20 +21,20 @@ import {
   User,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
 
 interface BloodRequest {
   id: string;
-  bloodGroup: string;
+  bloodType: string;
   location: string;
   date: string;
   notes?: string;
+  contactPhone: string;
   status: "pending" | "approved" | "completed" | "rejected";
   requester: {
     id: string;
     name: string;
     email: string;
-    contactPhone?: string;
+    contactPhone: string;
   };
   donations: Array<{
     id: string;
@@ -54,10 +54,7 @@ interface BloodRequestCardProps {
   request: BloodRequest;
   bloodGroup?: string;
   isOwnRequest?: boolean;
-  onRespond?: (
-    requestId: string,
-    action: "join" | "approve" | "reject"
-  ) => void;
+  onRespond?: (requestId: string, action: any) => void;
 }
 
 export const BloodRequestCard = ({
@@ -66,24 +63,9 @@ export const BloodRequestCard = ({
   isOwnRequest = false,
   onRespond,
 }: BloodRequestCardProps) => {
-  const [selectedDonation, setSelectedDonation] = useState<any>(null);
+  // const [selectedDonation, setSelectedDonation] = useState<any>(null);
   const { user } = useAuth();
-  console.log(user);
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "critical":
-        return "destructive";
-      case "high":
-        return "default";
-      case "medium":
-        return "secondary";
-      case "low":
-        return "outline";
-      default:
-        return "outline";
-    }
-  };
-
+  console.log(request);
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ACCEPTED":
@@ -107,8 +89,10 @@ export const BloodRequestCard = ({
   ) => {
     onRespond?.(donationId, action);
   };
-  const bloodGroupMatches = bloodGroup == request.bloodGroup;
-
+  const bloodGroupMatches = bloodGroup == request.bloodType;
+  const alreadyJoined = request.donations?.some(
+    (d) => d.donorId === user?.id && d.status === "PENDING" // or ACCEPTED
+  );
   return (
     <Card
       className={`border-l-4 ${
@@ -126,14 +110,8 @@ export const BloodRequestCard = ({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h3 className="font-semibold text-responsive-lg sm:text-lg">
-                  {request.bloodGroup} Blood Needed
+                  {request.bloodType} Blood Needed
                 </h3>
-                <Badge
-                  variant={getUrgencyColor(request.urgency)}
-                  className="text-xs"
-                >
-                  {request.urgency}
-                </Badge>
               </div>
               <p className="text-responsive sm:text-sm text-muted-foreground truncate">
                 Requested by {request.requester.name}
@@ -184,7 +162,7 @@ export const BloodRequestCard = ({
               variant="hero"
               size="sm"
               onClick={handleJoinRequest}
-              disabled={!bloodGroupMatches}
+              disabled={!bloodGroupMatches || alreadyJoined}
               className="text-responsive sm:text-sm text-white"
             >
               <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
@@ -206,14 +184,14 @@ export const BloodRequestCard = ({
               </a>
             </Button>
 
-            {user?.bloodGroup !== request?.bloodGroup && (
+            {user?.bloodGroup !== request?.bloodType && (
               <p className="text-xs text-muted-foreground mt-1">
                 Your blood type ({user?.bloodGroup}) doesn't match (
-                {request?.bloodGroup})
+                {request?.bloodType})
               </p>
             )}
 
-            {user?.bloodGroup === request?.bloodGroup && (
+            {user?.bloodGroup === request?.bloodType && (
               <p className="text-xs text-green-600 mt-1">
                 ✅ Your blood type matches the request!
               </p>

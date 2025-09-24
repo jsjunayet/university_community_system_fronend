@@ -8,7 +8,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
-import { createComment, createVote, getAllPost } from "@/services/postService";
+import { getOwnJobPost } from "@/services/jobPoralService";
+import { createComment, createVote } from "@/services/postService";
 import { formatDistanceToNow } from "date-fns";
 import {
   Heart,
@@ -22,11 +23,17 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-const FoodPostCard = ({ post }) => {
+const FoodPostCard = ({
+  post,
+  fetchPost,
+}: {
+  post: any;
+  fetchPost: () => void;
+}) => {
   const [showComments, setShowComments] = useState(false);
   const { user } = useAuth();
   const [newComment, setNewComment] = useState("");
-  const [Posts, setPosts] = useState([]);
+  const [Posts, setPosts] = useState<any>([]);
 
   const handleLikePost = async (postId: string) => {
     if (!user) {
@@ -56,8 +63,8 @@ const FoodPostCard = ({ post }) => {
 
       // Update local post state
       const updatedPost = { ...post, votes: newVotes };
-      setPosts((prevPosts) => {
-        return prevPosts.map((p) => (p.id === postId ? updatedPost : p));
+      setPosts((prevPosts: any) => {
+        return prevPosts.map((p: any) => (p.id === postId ? updatedPost : p));
       });
 
       // Send API request in background
@@ -67,6 +74,7 @@ const FoodPostCard = ({ post }) => {
       };
 
       await createVote(voteData);
+      fetchPost();
       // No fetchPost() call to prevent reload
     } catch (error) {
       console.error("Error voting on post:", error);
@@ -75,8 +83,8 @@ const FoodPostCard = ({ post }) => {
       fetchPost();
     }
   };
-  const upVotes = post?.votes?.filter((vote) => vote.vote === "UP").length;
-  const userVote = post.votes?.find((vote) => vote.userId === user?.id);
+  const upVotes = post?.votes?.filter((vote: any) => vote.vote === "UP").length;
+  const userVote = post.votes?.find((vote: any) => vote.userId === user?.id);
   const hasUpvoted = userVote?.vote === "UP";
   const handleAddComment = async (postId: string) => {
     if (!newComment.trim()) return;
@@ -98,8 +106,8 @@ const FoodPostCard = ({ post }) => {
     };
 
     // Update local state
-    setPosts((prevPosts) => {
-      return prevPosts.map((p) => (p.id === postId ? updatedPost : p));
+    setPosts((prevPosts: any) => {
+      return prevPosts.map((p: any) => (p.id === postId ? updatedPost : p));
     });
 
     // Clear input field immediately
@@ -112,7 +120,7 @@ const FoodPostCard = ({ post }) => {
         commentText: tempComment.commentText,
       };
       const res = await createComment(payload);
-
+      fetchPost();
       if (!res.success) {
         throw new Error("Failed to add comment");
       }
@@ -130,13 +138,13 @@ const FoodPostCard = ({ post }) => {
 
   const handleShareClick = () => {
     // Create a shareable URL with the post ID
-    const shareUrl = `${window.location.origin}/allpost?postId=${post.id}`;
+    const shareUrl = `${window.location.origin}/community?id=${post.id}`;
 
     // Try to use the Web Share API if available
     if (navigator.share) {
       navigator
         .share({
-          title: `Food Discovery by ${post?.user?.name || "JUNAYET"}`,
+          title: `Coumminty Post ${post?.user?.name || "SAYEM"}`,
           text: post?.description?.substring(0, 100) + "...",
           url: shareUrl,
         })
@@ -168,8 +176,8 @@ const FoodPostCard = ({ post }) => {
       "_blank"
     );
   };
-  const fetchPost = async () => {
-    const res = await getAllPost();
+  const fetchOwn = async () => {
+    const res = await getOwnJobPost();
     console.log(res);
     if (res.success) {
       setPosts(res.data);

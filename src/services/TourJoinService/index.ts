@@ -53,7 +53,7 @@ export const ApprovedOrRejectedStatusGroupJoin = async (
   }
 };
 
-export const CreateTourGroupJoin = async (payload): Promise<any> => {
+export const CreateTourGroupJoin = async (payload: any): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {

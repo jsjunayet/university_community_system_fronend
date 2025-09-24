@@ -27,6 +27,7 @@ import {
   getOwnJobPost,
 } from "@/services/jobPoralService";
 import {
+  ApprovedOrRejectedStatusJobPostJoin,
   CreateTourJobPostJoin,
   getMyJobPostJoin,
 } from "@/services/jopPortalJoinService";
@@ -36,7 +37,6 @@ import {
   Building,
   Calendar,
   Check,
-  Eye,
   MapPin,
   Plus,
   Search,
@@ -44,6 +44,7 @@ import {
   X,
 } from "lucide-react";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { JobApplicationModal } from "../JobApplication/JobApplicationModal";
@@ -135,6 +136,7 @@ const Jobs = () => {
 
   const [jobs, setJobs] = useState<JobApplication[]>(mockJobs);
   const [applications, setApplications] = useState<any[]>([]);
+  const [isActivetab, setIsActiveTab] = useState("browse");
   const [jobData, setJobData] = useState({
     title: "",
     company: "",
@@ -142,10 +144,10 @@ const Jobs = () => {
     requirements: "",
     deadline: "",
   });
-  const [Blood, setBlood] = useState([]);
-  const [Avaiableblood, setAvaiableblood] = useState([]);
-  const [myBlood, setMyblood] = useState([]);
-  console.log(Avaiableblood, Blood);
+  const [Blood, setBlood] = useState<any>([]);
+  console.log(Blood, "blood");
+  const [Avaiableblood, setAvaiableblood] = useState<any>([]);
+  const [myBlood, setMyblood] = useState<any>([]);
   const fetchMyblood = async () => {
     try {
       setIsLoading(true);
@@ -220,6 +222,12 @@ const Jobs = () => {
 
   const handleSubmit = async () => {
     // Format deadline to ISO string
+    const { title, company, description, requirements, deadline } = jobData;
+
+    if (!title || !company || !description || !requirements || !deadline) {
+      toast.error("Please fill in all fields before submitting.");
+      return; // ⛔ stop submission
+    }
     const formattedDeadline = jobData.deadline
       ? new Date(jobData.deadline).toISOString()
       : null;
@@ -232,6 +240,7 @@ const Jobs = () => {
     const res = await CreateJobPost(payload);
     if (res.success) {
       toast.success(`${res.message}`);
+      setIsActiveTab("manage");
       fetchMyblood();
       fetchAllBlood();
       console.log(res);
@@ -248,9 +257,8 @@ const Jobs = () => {
   };
 
   const handleApplicationSubmit = async (applicationData: any) => {
-    console.log(applicationData);
     const res = await CreateTourJobPostJoin(applicationData);
-    console.log(res);
+    console.log(res, "data");
     if (res.success) {
       toast.success(`${res.message}`);
     } else {
@@ -258,40 +266,20 @@ const Jobs = () => {
     }
   };
 
-  const handleApproveApplication = (jobId: string, applicationId: string) => {
-    setJobs((jobs) =>
-      jobs.map((job) =>
-        job.id === jobId
-          ? {
-              ...job,
-              applications: job.applications.map((app) =>
-                app.id === applicationId
-                  ? { ...app, status: "shortlisted" }
-                  : app
-              ),
-            }
-          : job
-      )
-    );
+  const handleApproveApplication = async (jobId: string, status: string) => {
+    console.log(jobId, status);
+    const res = await ApprovedOrRejectedStatusJobPostJoin(jobId, status);
+    console.log(res, "data");
+    if (res.success) {
+      toast.success(`${res.message}`);
+      fetchOwn();
+      fetchMyblood();
+    } else {
+      toast.error(`${"something went wrong"}`);
+    }
   };
-
-  const handleRejectApplication = (jobId: string, applicationId: string) => {
-    setJobs((jobs) =>
-      jobs.map((job) =>
-        job.id === jobId
-          ? {
-              ...job,
-              applications: job.applications.map((app) =>
-                app.id === applicationId ? { ...app, status: "rejected" } : app
-              ),
-            }
-          : job
-      )
-    );
-  };
-
   const filteredJobs = Avaiableblood?.filter(
-    (job) =>
+    (job: any) =>
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.company.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -380,11 +368,23 @@ const Jobs = () => {
         )}
       </div>
 
-      <Tabs defaultValue="browse" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs
+        className="w-full"
+        value={isActivetab}
+        onValueChange={setIsActiveTab}
+      >
+        <TabsList
+          className={`${
+            user?.role !== "student"
+              ? "grid w-full grid-cols-3"
+              : "grid w-full grid-cols-2"
+          }`}
+        >
           <TabsTrigger value="browse">Browse Jobs</TabsTrigger>
           <TabsTrigger value="applications">My Applications</TabsTrigger>
-          <TabsTrigger value="manage">Manage Jobs</TabsTrigger>
+          {user?.role !== "student" && (
+            <TabsTrigger value="manage">Manage Jobs</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="browse" className="space-y-4">
@@ -407,7 +407,7 @@ const Jobs = () => {
                 .fill(0)
                 .map((_, index) => <JobCardSkeleton key={index} />)
             ) : filteredJobs && filteredJobs.length > 0 ? (
-              filteredJobs.map((job) => (
+              filteredJobs.map((job: any) => (
                 <Card
                   key={job.id}
                   className="hover:shadow-md transition-shadow"
@@ -450,7 +450,7 @@ const Jobs = () => {
                     <div className="flex flex-wrap gap-2 mb-4">
                       {job.requirements
                         ?.split(",") // কমা দিয়ে ভাগ করবো
-                        .map((req, index) => (
+                        .map((req: any, index: any) => (
                           <Badge key={index} variant="outline">
                             {req.trim()}{" "}
                             {/* trim() দিয়ে অতিরিক্ত স্পেস মুছে ফেলবো */}
@@ -511,7 +511,7 @@ const Jobs = () => {
                   </Card>
                 ))
             ) : myBlood.length > 0 ? (
-              myBlood.map((job) => {
+              myBlood.map((job: any) => {
                 return (
                   <Card key={job.id}>
                     <CardHeader>
@@ -543,7 +543,6 @@ const Jobs = () => {
                         </div>
 
                         <div className="flex gap-2">
-                          <Button variant="outline">View Details</Button>
                           {job.resume && (
                             <a
                               href={job.resume}
@@ -568,7 +567,6 @@ const Jobs = () => {
             )}
           </div>
         </TabsContent>
-
         <TabsContent value="manage" className="space-y-4">
           {user?.role === "alumni" ||
           user?.role === "admin" ||
@@ -619,7 +617,7 @@ const Jobs = () => {
                 </div>
               ) : Blood.length > 0 ? (
                 <div className="grid gap-4">
-                  {Blood.map((job) => (
+                  {Blood.map((job: any) => (
                     <Card key={job.id}>
                       <CardHeader>
                         <div className="flex justify-between items-start">
@@ -648,26 +646,25 @@ const Jobs = () => {
                           {job.applications?.length > 0 && (
                             <div className="space-y-3">
                               <h4 className="font-medium">Applications:</h4>
-                              {job.applications.map((app) => (
+                              {job.applications.map((app: any) => (
                                 <div
                                   key={app.id}
                                   className="flex items-center justify-between p-3 border rounded-lg"
                                 >
                                   <div className="flex-1">
                                     <p className="font-medium text-sm">
-                                      {app.applicantId}
+                                      {app.user?.name}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      Applied:{" "}
-                                      {app.appliedDate.toLocaleDateString()}
+                                      Applied: {app.createdAt}
                                     </p>
                                     <Badge
                                       variant={
-                                        app.status === "pending"
+                                        app.status === "PENDING"
                                           ? "secondary"
                                           : app.status === "shortlisted"
                                           ? "default"
-                                          : app.status === "rejected"
+                                          : app.status === "REJECTED"
                                           ? "destructive"
                                           : "success"
                                       }
@@ -675,22 +672,31 @@ const Jobs = () => {
                                     >
                                       {app.status}
                                     </Badge>
+                                    {app.resume && (
+                                      <p className="text-xs mt-1">
+                                        Resume:{" "}
+                                        <Link
+                                          href={app.resume}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 underline hover:text-blue-800"
+                                        >
+                                          View Resume
+                                        </Link>
+                                      </p>
+                                    )}
                                   </div>
 
                                   <div className="flex gap-2">
-                                    <Button variant="outline" size="sm">
-                                      <Eye className="w-4 h-4" />
-                                    </Button>
-
-                                    {app.status === "pending" && (
+                                    {app.status === "PENDING" && (
                                       <>
                                         <Button
                                           variant="success"
                                           size="sm"
                                           onClick={() =>
                                             handleApproveApplication(
-                                              job.id,
-                                              app.id
+                                              app.id,
+                                              "ACCEPTED"
                                             )
                                           }
                                         >
@@ -700,9 +706,9 @@ const Jobs = () => {
                                           variant="destructive"
                                           size="sm"
                                           onClick={() =>
-                                            handleRejectApplication(
-                                              job.id,
-                                              app.id
+                                            handleApproveApplication(
+                                              app.id,
+                                              "REJECTED"
                                             )
                                           }
                                         >

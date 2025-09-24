@@ -52,20 +52,20 @@ const Contact = () => {
     {
       icon: Mail,
       title: "Email Us",
-      details: "support@uniconnect.edu",
+      details: "dragonsayem77@gmail.com",
       description: "Send us an email anytime",
     },
     {
       icon: Phone,
       title: "Call Us",
-      details: "+1 (555) 123-4567",
+      details: "+880 1738-413686",
       description: "Mon-Fri 9AM-6PM EST",
     },
     {
       icon: MapPin,
       title: "Visit Us",
-      details: "123 University Ave, Campus City, CC 12345",
-      description: "Student Union Building, Room 201",
+      details: "Southern University Bangladesh",
+      description: "Arefin Nagar, Bayezid Bostami, Chattogram",
     },
     {
       icon: Clock,

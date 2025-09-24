@@ -27,7 +27,10 @@ export const getMyeventJoin = async () => {
   }
 };
 
-export const Approvedeventjoin = async (id: string, payload): Promise<any> => {
+export const Approvedeventjoin = async (
+  id: string,
+  payload: any
+): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {
@@ -49,7 +52,10 @@ export const Approvedeventjoin = async (id: string, payload): Promise<any> => {
     throw new Error(error.message || "Something went wrong");
   }
 };
-export const Rejectedeventjoin = async (id: string, payload): Promise<any> => {
+export const Rejectedeventjoin = async (
+  id: string,
+  payload: any
+): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {

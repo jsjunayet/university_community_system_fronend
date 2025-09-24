@@ -75,28 +75,6 @@ export const TourManagementCard = ({
     amount: parseFloat(tour.price) || 0,
   });
 
-  const handleJoinSubmit = () => {
-    if (!joinFormData.bkashNumber || !joinFormData.trxId) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all payment details",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    onJoin(tour.id, joinFormData);
-    setJoinFormData({
-      bkashNumber: "",
-      trxId: "",
-      amount: parseFloat(tour.price) || 0,
-    });
-    toast({
-      title: "Join Request Sent",
-      description: "Your tour join request has been submitted for approval",
-    });
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ACCEPTED":
@@ -194,7 +172,7 @@ export const TourManagementCard = ({
 
             {tour.tourJoins?.length > 0 ? (
               <div className="space-y-3">
-                {tour.tourJoins.map((join) => (
+                {tour.tourJoins.map((join: any) => (
                   <div
                     key={join.id}
                     className="flex items-center justify-between p-3 border rounded-lg"

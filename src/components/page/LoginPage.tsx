@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { requestForToken } from "@/lib/firebase";
 import {
   getCurrentUser,
   loginUser,
@@ -33,18 +32,29 @@ const LoginPage = () => {
       if (res.success) {
         // Fetch user data immediately after successful login
         const currentUser = await getCurrentUser();
-        setUser(currentUser, "current user"); // Update auth context with user data
+        setUser(currentUser); // Update auth context with user data
 
         toast.success(res.message || "Successfully logged in!");
-        const fcmToken = await requestForToken();
+        // const fcmToken = await requestForToken();
 
-        if (fcmToken) {
-          // 🔹 Step 3: token backend এ save করো
-          const res = await tokenFornotification({
-            userId: currentUser.id,
-            token: fcmToken,
-          });
-          console.log(res);
+        // if (fcmToken) {
+        //   // 🔹 Step 3: token backend এ save করো
+        //   const res = await tokenFornotification({
+        //     userId: currentUser.id,
+        //     token: fcmToken,
+        //   });
+        //   console.log(res);
+        // }
+        if (typeof window !== "undefined") {
+          const { requestForToken } = await import("@/lib/firebase");
+          const fcmToken = await requestForToken();
+
+          if (fcmToken) {
+            await tokenFornotification({
+              userId: currentUser.id,
+              token: fcmToken,
+            });
+          }
         }
 
         // await saveFcmToken();
@@ -53,7 +63,6 @@ const LoginPage = () => {
       } else {
         toast.error(res.message || "Login failed");
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast.error(error.message || "Login failed");
     } finally {
@@ -121,7 +130,6 @@ const LoginPage = () => {
             <Button
               type="submit"
               className="w-full bg-primary"
-              variant=""
               disabled={loading}
             >
               {loading ? "Signing in..." : "Sign In"}

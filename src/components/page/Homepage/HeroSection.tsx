@@ -8,6 +8,7 @@ import {
   User,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 
 const HeroSection = () => {
   return (
@@ -39,13 +40,17 @@ const HeroSection = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button variant="hero" size="xl" className="min-w-48">
-                Get Started Today
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-              <Button variant="outline" size="xl" className="min-w-48">
-                Contact Us
-              </Button>
+              <Link href={"/login"} passHref>
+                <Button variant="hero" size="xl" className="min-w-48">
+                  Get Started Today
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </Link>
+              <Link href="/contact" passHref>
+                <Button variant="outline" size="xl" className="min-w-48">
+                  Contact Us
+                </Button>{" "}
+              </Link>
             </div>
           </div>
 

@@ -82,7 +82,7 @@ export const deletedEvent = async (id: string): Promise<any> => {
     throw new Error(error.message || "Something went wrong");
   }
 };
-export const updateEvent = async (id: string, payload): Promise<any> => {
+export const updateEvent = async (id: string, payload: any): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {
@@ -126,7 +126,7 @@ export const ApprovedEvent = async (
     throw new Error(error.message || "Something went wrong");
   }
 };
-export const CreateEvent = async (payload): Promise<any> => {
+export const CreateEvent = async (payload: any): Promise<any> => {
   const token = (await cookies()).get("accessToken")!.value;
 
   try {

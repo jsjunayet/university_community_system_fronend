@@ -1,3 +1,4 @@
+"use client";
 import Community from "@/components/page/Community";
 
 const CommunityPage = () => {

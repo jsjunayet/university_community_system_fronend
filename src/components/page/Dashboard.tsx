@@ -81,7 +81,7 @@ const Dashboard = () => {
         return [
           {
             title: "Donate Blood",
-            description: "Register for blood donation",
+            description: "Find blood donation",
             href: "/blood-donation",
             icon: "Heart",
             variant: "hero" as const,
@@ -120,7 +120,7 @@ const Dashboard = () => {
           {
             title: "Create Event",
             description: "Organize community events",
-            href: "/events",
+            href: "/events/?tab=create",
             icon: "Calendar",
             variant: "university" as const,
           },
@@ -145,30 +145,30 @@ const Dashboard = () => {
             {
               title: "Manage Users",
               description: "User verification & roles",
-              href: "/admin",
+              href: "/admin?tab=users",
               icon: "Users",
               variant: "hero" as const,
             },
             {
               title: "Event Oversight",
               description: "Approve and monitor events",
-              href: "/admin",
+              href: "/admin?tab=events",
               icon: "Calendar",
               variant: "university" as const,
             },
             {
-              title: "Blood System",
-              description: "Manage donation system",
-              href: "/admin",
-              icon: "Heart",
-              variant: "success" as const,
-            },
-            {
               title: "Group Tours",
               description: "Manage Group Tour system",
-              href: "/admin",
+              href: "/admin?tab=tours",
               icon: "MapPin",
               variant: "accent" as const,
+            },
+            {
+              title: "Community",
+              description: "Manage community system",
+              href: "/admin?tab=community",
+              icon: "Users",
+              variant: "success" as const,
             },
           ];
         }
@@ -208,15 +208,18 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {isLoading ? (
           // Show skeleton loading while data is being fetched
-          Array(4).fill(0).map((_, index) => (
-            <StatCardSkeleton key={index} />
-          ))
+          Array(4)
+            .fill(0)
+            .map((_, index) => <StatCardSkeleton key={index} />)
         ) : dashboardData.length > 0 ? (
           dashboardData.map((stat, index) => {
             // Dynamically pick icon component from iconMap
             const IconComponent = iconMap[stat.icon] || Award; // default icon
             return (
-              <Card key={index} className="hover:shadow-medium transition-shadow">
+              <Card
+                key={index}
+                className="hover:shadow-medium transition-shadow"
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -241,7 +244,9 @@ const Dashboard = () => {
         ) : (
           <Card className="col-span-full">
             <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground">No dashboard data available</p>
+              <p className="text-muted-foreground">
+                No dashboard data available
+              </p>
             </CardContent>
           </Card>
         )}
@@ -255,9 +260,9 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {isLoading ? (
             // Show skeleton loading while data is being fetched
-            Array(4).fill(0).map((_, index) => (
-              <ActionCardSkeleton key={index} />
-            ))
+            Array(4)
+              .fill(0)
+              .map((_, index) => <ActionCardSkeleton key={index} />)
           ) : quickActions.length > 0 ? (
             quickActions.map((action, index) => {
               const IconComponent = iconMap[action.icon] || Award;
@@ -288,7 +293,9 @@ const Dashboard = () => {
           ) : (
             <Card className="col-span-full">
               <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">No quick actions available</p>
+                <p className="text-muted-foreground">
+                  No quick actions available
+                </p>
               </CardContent>
             </Card>
           )}

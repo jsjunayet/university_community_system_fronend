@@ -36,8 +36,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 const AllPostPage = () => {
   const { user } = useAuth();
-  const [Posts, setPosts] = useState([]);
-  const [MyPost, setMyPost] = useState([]);
+  const [Posts, setPosts] = useState<any>([]);
+  const [MyPost, setMyPost] = useState<any>([]);
 
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostLocation, setNewPostLocation] = useState("");
@@ -104,6 +104,10 @@ const AllPostPage = () => {
       alert(`${payload.notification?.title}: ${payload.notification?.body}`);
     });
   }, []);
+  const isFormValid =
+    newPostContent.trim() !== "" ||
+    imagePreviewUrls.length > 0 ||
+    newPostLocation.trim() !== "";
 
   const handleCreatePost = async () => {
     setloading(true);
@@ -112,9 +116,7 @@ const AllPostPage = () => {
     const payload = {
       description: newPostContent,
       location: newPostLocation,
-      image:
-        uploadedUrls[0] ||
-        "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=300",
+      image: uploadedUrls[0] || "",
     };
     console.log(payload);
     const res = await createPost(payload); // এখন কোন error থাকবে না
@@ -122,6 +124,7 @@ const AllPostPage = () => {
     if (res.success) {
       toast.success("Post created!");
       setloading(false);
+      fetchPost();
       fetchMyPost();
       setNewPostContent("");
 
@@ -152,7 +155,7 @@ const AllPostPage = () => {
     fetchMyPost();
   }, []);
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 rounded-lg shadow-sm">
       <div className="max-w-4xl mx-auto py-8 md:px-4 px-2">
         <div className="flex justify-between items-center">
           <div>
@@ -271,7 +274,7 @@ const AllPostPage = () => {
                     <Button
                       className=" bg-secondary"
                       onClick={handleCreatePost}
-                      disabled={loading}
+                      disabled={loading || !isFormValid}
                     >
                       {loading ? "Posting...." : "Post"}
                     </Button>
@@ -283,8 +286,12 @@ const AllPostPage = () => {
             {/* Posts Feed */}
             {Posts?.length > 0 ? (
               <div className="space-y-6">
-                {Posts.map((post) => (
-                  <FoodPostCard key={post.id} post={post} />
+                {Posts.map((post: any) => (
+                  <FoodPostCard
+                    key={post.id}
+                    post={post}
+                    fetchPost={fetchPost}
+                  />
                 ))}
               </div>
             ) : (
@@ -340,7 +347,7 @@ const AllPostPage = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {MyPost?.map((post) => (
+                    {MyPost?.map((post: any) => (
                       <TableRow key={post.id}>
                         <TableCell>{post.description}</TableCell>
                         <TableCell>{post.location}</TableCell>
